@@ -1,25 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-
-// Define the path to our config file
-const configFilePath = path.join(process.cwd(), 'config.json');
-
-// Helper to read the config file
-async function readConfig() {
-  try {
-    const data = await fs.readFile(configFilePath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    // If file doesn't exist or has invalid JSON, return empty config
-    return {};
-  }
-}
-
-// Helper to write to the config file
-async function writeConfig(config: any) {
-  await fs.writeFile(configFilePath, JSON.stringify(config, null, 2), 'utf8');
-}
+import { readConfig, writeConfig } from '@/lib/config';
+import { spawn } from 'child_process';
 
 // Create a read/write token for a specific bucket
 export async function POST(request: NextRequest) {
@@ -101,7 +82,7 @@ export async function POST(request: NextRequest) {
     config.buckets[bucketName].token = tokenData.token;
     config.buckets[bucketName].tokenId = tokenData.id;
 
-    await fs.writeFile(configFilePath, JSON.stringify(config, null, 2), 'utf8');
+    await writeConfig(config);
 
     return NextResponse.json({
       success: true,
@@ -276,9 +257,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Import child_process for executing system commands
-import { spawn } from 'child_process';
-import { promisify } from 'util';
+// Import child_process for executing system commands is no longer needed
 
 // DELETE handler to remove a token
 export async function DELETE(request: NextRequest) {
@@ -321,7 +300,7 @@ export async function DELETE(request: NextRequest) {
       
       // Collect stdout data
       let stdoutData = '';
-      cliProcess.stdout.on('data', (data) => {
+      cliProcess.stdout.on('data', (data: Buffer) => {
         stdoutData += data.toString();
         // If the CLI is asking for confirmation, automatically send 'yes'
         if (data.toString().includes("Enter 'yes' to confirm")) {
@@ -331,14 +310,14 @@ export async function DELETE(request: NextRequest) {
       
       // Collect stderr data
       let stderrData = '';
-      cliProcess.stderr.on('data', (data) => {
+      cliProcess.stderr.on('data', (data: Buffer) => {
         stderrData += data.toString();
         // Collect error output
       });
       
       // Return a promise that resolves when the process exits
       await new Promise((resolve, reject) => {
-        cliProcess.on('close', (code) => {
+        cliProcess.on('close', (code: number | null) => {
           // Check process exit code
           if (code === 0) {
             resolve(code);
@@ -347,7 +326,7 @@ export async function DELETE(request: NextRequest) {
           }
         });
         
-        cliProcess.on('error', (err) => {
+        cliProcess.on('error', (err: Error) => {
           console.error('CLI process error:', err);
           reject(err);
         });

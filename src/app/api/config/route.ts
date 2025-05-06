@@ -1,32 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-
-// Define the path to our config file
-const configFilePath = path.join(process.cwd(), 'config.json');
-
-// Interface for our config structure
-interface Config {
-  influxEndpoint?: string;
-  adminToken?: string;
-  activeBucket?: string | null;
-}
-
-// Helper to read the config file
-async function readConfig(): Promise<Config> {
-  try {
-    const data = await fs.readFile(configFilePath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    // If file doesn't exist or has invalid JSON, return empty config
-    return {};
-  }
-}
-
-// Helper to write to the config file
-async function writeConfig(config: Config): Promise<void> {
-  await fs.writeFile(configFilePath, JSON.stringify(config, null, 2), 'utf8');
-}
+import { readConfig, writeConfig, updateConfig, removeConfigKeys, Config } from '@/lib/config';
 
 // GET handler to retrieve configuration
 export async function GET() {
@@ -37,14 +10,10 @@ export async function GET() {
 // POST handler to update configuration
 export async function POST(request: NextRequest) {
   try {
-    const currentConfig = await readConfig();
     const newData = await request.json();
     
-    // Merge existing config with new data
-    const updatedConfig = { ...currentConfig, ...newData };
-    
-    // Write updated config back to file
-    await writeConfig(updatedConfig);
+    // Use the updateConfig function from the config library
+    const updatedConfig = await updateConfig(newData);
     
     return NextResponse.json(
       { success: true, config: updatedConfig },
@@ -62,18 +31,14 @@ export async function POST(request: NextRequest) {
 // DELETE handler to remove specific configuration keys
 export async function DELETE(request: NextRequest) {
   try {
-    const currentConfig = await readConfig();
     const { keys } = await request.json();
     
     if (Array.isArray(keys)) {
-      for (const key of keys) {
-        delete currentConfig[key as keyof Config];
-      }
-      
-      await writeConfig(currentConfig);
+      // Use the removeConfigKeys function from the config library
+      const updatedConfig = await removeConfigKeys(keys);
       
       return NextResponse.json(
-        { success: true, config: currentConfig },
+        { success: true, config: updatedConfig },
         { status: 200 }
       );
     }

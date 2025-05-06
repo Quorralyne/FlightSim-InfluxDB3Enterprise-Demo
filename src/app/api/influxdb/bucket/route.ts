@@ -1,25 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-
-// Define the path to our config file
-const configFilePath = path.join(process.cwd(), 'config.json');
-
-// Helper to read the config file
-async function readConfig() {
-  try {
-    const data = await fs.readFile(configFilePath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    // If file doesn't exist or has invalid JSON, return empty config
-    return {};
-  }
-}
-
-// Helper to write to the config file
-async function writeConfig(config: any) {
-  await fs.writeFile(configFilePath, JSON.stringify(config, null, 2), 'utf8');
-}
+import { readConfig, writeConfig } from '@/lib/config';
 
 // Create a bucket
 export async function POST(request: NextRequest) {
@@ -81,7 +61,7 @@ export async function POST(request: NextRequest) {
         retentionPeriod: retentionPeriod || 'infinite'
       };
 
-      await fs.writeFile(configFilePath, JSON.stringify(config, null, 2), 'utf8');
+      await writeConfig(config);
 
       return NextResponse.json({
         success: true,
@@ -134,7 +114,7 @@ export async function POST(request: NextRequest) {
       retentionPeriod: retentionPeriod || 'infinite'
     };
 
-    await fs.writeFile(configFilePath, JSON.stringify(config, null, 2), 'utf8');
+    await writeConfig(config);
 
     return NextResponse.json({
       success: true,
