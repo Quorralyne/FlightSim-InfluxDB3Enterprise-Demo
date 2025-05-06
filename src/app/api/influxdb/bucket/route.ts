@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readConfig, writeConfig } from '@/lib/config';
+import { readConfig, writeConfig, getFormattedEndpoint } from '@/lib/config';
 
 // Create a bucket
 export async function POST(request: NextRequest) {
@@ -24,11 +24,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure the endpoint URL is properly formatted
-    const endpointUrl = config.influxEndpoint.endsWith('/')
-      ? config.influxEndpoint
-      : `${config.influxEndpoint}/`;
-
+    // Get the properly formatted endpoint URL
+    const endpointUrl = getFormattedEndpoint(config);
+    
+    if (!endpointUrl) {
+      return NextResponse.json(
+        { success: false, error: 'InfluxDB endpoint is not configured' },
+        { status: 400 }
+      );
+    }
 
     // Prepare the request body for database creation
     // For InfluxDB v3, we use the database endpoint
@@ -149,10 +153,15 @@ export async function GET() {
       );
     }
 
-    // Ensure the endpoint URL is properly formatted
-    const endpointUrl = config.influxEndpoint.endsWith('/')
-      ? config.influxEndpoint
-      : `${config.influxEndpoint}/`;
+    // Get the properly formatted endpoint URL
+    const endpointUrl = getFormattedEndpoint(config);
+    
+    if (!endpointUrl) {
+      return NextResponse.json(
+        { success: false, error: 'InfluxDB endpoint is not configured' },
+        { status: 400 }
+      );
+    }
 
     // Call the InfluxDB API to list databases
     const response = await fetch(`${endpointUrl}api/v3/configure/database?format=json`, {
@@ -217,10 +226,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Ensure the endpoint URL is properly formatted
-    const endpointUrl = config.influxEndpoint.endsWith('/') 
-      ? config.influxEndpoint 
-      : `${config.influxEndpoint}/`;
+    // Get the properly formatted endpoint URL
+    const endpointUrl = getFormattedEndpoint(config);
+    
+    if (!endpointUrl) {
+      return NextResponse.json(
+        { success: false, error: 'InfluxDB endpoint is not configured' },
+        { status: 400 }
+      );
+    }
 
     // First, try to delete from the config file
     if (config.buckets && config.buckets[bucketName]) {

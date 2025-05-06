@@ -79,9 +79,19 @@ export function getFormattedEndpoint(config: Config): string | null {
   if (!config.influxEndpoint) return null;
   
   // Ensure the endpoint URL is properly formatted with trailing slash
-  return config.influxEndpoint.endsWith('/') 
-    ? config.influxEndpoint 
-    : `${config.influxEndpoint}/`;
+  return formatEndpointUrl(config.influxEndpoint);
+}
+
+/**
+ * Formats an endpoint URL to ensure it has a trailing slash
+ * @param url The endpoint URL to format
+ * @returns The formatted endpoint URL
+ */
+export function formatEndpointUrl(url: string): string {
+  if (!url) return '';
+  
+  // Ensure the endpoint URL is properly formatted with trailing slash
+  return url.endsWith('/') ? url : `${url}/`;
 }
 
 /**

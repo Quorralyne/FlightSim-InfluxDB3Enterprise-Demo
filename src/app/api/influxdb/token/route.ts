@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readConfig, writeConfig } from '@/lib/config';
+import { readConfig, writeConfig, getFormattedEndpoint } from '@/lib/config';
 import { spawn } from 'child_process';
 
 // Create a read/write token for a specific bucket
@@ -24,11 +24,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure the endpoint URL is properly formatted
-    const endpointUrl = config.influxEndpoint.endsWith('/')
-      ? config.influxEndpoint
-      : `${config.influxEndpoint}/`;
-
+    // Get the properly formatted endpoint URL
+    const endpointUrl = getFormattedEndpoint(config);
+    
+    if (!endpointUrl) {
+      return NextResponse.json(
+        { success: false, error: 'InfluxDB endpoint is not configured' },
+        { status: 400 }
+      );
+    }
 
     // For InfluxDB v3, we use the enterprise token endpoint directly
     // We don't need to fetch bucket/database ID first
@@ -146,10 +150,15 @@ export async function GET(request: NextRequest) {
       }
 
       // If not in config, try to get from InfluxDB
-      // Ensure the endpoint URL is properly formatted
-      const endpointUrl = config.influxEndpoint.endsWith('/')
-        ? config.influxEndpoint
-        : `${config.influxEndpoint}/`;
+      // Get the properly formatted endpoint URL
+      const endpointUrl = getFormattedEndpoint(config);
+      
+      if (!endpointUrl) {
+        return NextResponse.json(
+          { success: false, error: 'InfluxDB endpoint is not configured' },
+          { status: 400 }
+        );
+      }
 
       // Use a simpler query that's more likely to work
       // We'll filter the results in code instead of in the SQL query
@@ -204,10 +213,15 @@ export async function GET(request: NextRequest) {
     }
 
     // If no bucket name provided, list all tokens
-    // Ensure the endpoint URL is properly formatted
-    const endpointUrl = config.influxEndpoint.endsWith('/')
-      ? config.influxEndpoint
-      : `${config.influxEndpoint}/`;
+    // Get the properly formatted endpoint URL
+    const endpointUrl = getFormattedEndpoint(config);
+    
+    if (!endpointUrl) {
+      return NextResponse.json(
+        { success: false, error: 'InfluxDB endpoint is not configured' },
+        { status: 400 }
+      );
+    }
 
     // Call the InfluxDB API to list enterprise tokens
     const response = await fetch(`${endpointUrl}api/v3/configure/enterprise/token`, {
@@ -267,12 +281,22 @@ export async function DELETE(request: NextRequest) {
     const tokenName = searchParams.get('tokenName');
     const bucketName = searchParams.get('bucket');
     
-    // Read the current configuration to get the admin token
+    // Read the current configuration to get the endpoint and admin token
     const config = await readConfig();
     
-    if (!config.adminToken) {
+    if (!config.influxEndpoint || !config.adminToken) {
       return NextResponse.json(
-        { success: false, error: 'Admin token is required to delete tokens' },
+        { success: false, error: 'InfluxDB configuration is incomplete. Please configure the endpoint and admin token first.' },
+        { status: 400 }
+      );
+    }
+    
+    // Get the properly formatted endpoint URL
+    const endpointUrl = getFormattedEndpoint(config);
+    
+    if (!endpointUrl) {
+      return NextResponse.json(
+        { success: false, error: 'InfluxDB endpoint is not configured' },
         { status: 400 }
       );
     }

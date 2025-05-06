@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { formatEndpointUrl } from '@/lib/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,10 +12,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure the endpoint URL is properly formatted
-    const endpointUrl = influxEndpoint.endsWith('/') 
-      ? influxEndpoint 
-      : `${influxEndpoint}/`;
+    // Get the properly formatted endpoint URL
+    const endpointUrl = formatEndpointUrl(influxEndpoint);
 
     // Make a health check request to InfluxDB
     const response = await fetch(`${endpointUrl}health`, {
