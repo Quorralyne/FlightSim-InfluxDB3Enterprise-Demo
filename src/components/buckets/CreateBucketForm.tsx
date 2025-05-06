@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useConfig } from '@/contexts/ConfigContext';
 import Button from '@/components/ui/Button';
 import styles from './CreateBucketForm.module.css';
@@ -16,6 +16,17 @@ export default function CreateBucketForm({ onSuccess, onCancel }: CreateBucketFo
   const [retentionPeriod, setRetentionPeriod] = useState<string>('24');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Create a ref for the bucket name input field
+  const bucketNameInputRef = useRef<HTMLInputElement>(null);
+  
+  // Select the text in the bucket name input field when the component mounts
+  useEffect(() => {
+    if (bucketNameInputRef.current) {
+      bucketNameInputRef.current.focus();
+      bucketNameInputRef.current.select();
+    }
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -61,6 +72,7 @@ export default function CreateBucketForm({ onSuccess, onCancel }: CreateBucketFo
           placeholder="Enter bucket name"
           disabled={isSubmitting}
           required
+          ref={bucketNameInputRef}
         />
       </div>
       

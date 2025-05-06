@@ -7,11 +7,13 @@ interface ConfigContextType {
   adminToken: string | null;
   isConfigured: boolean;
   currentBucket: string | null;
+  activeBucket: string | null;
   saveConfiguration: (url: string, token: string) => Promise<void>;
   createBucket: (name: string, retentionPeriod?: number) => Promise<any>;
   createToken: (bucketName: string, tokenName: string, description?: string) => Promise<any>;
   getBuckets: () => Promise<any[]>;
   getTokens: () => Promise<any[]>;
+  setActiveBucket: (bucketName: string | null) => void;
   isLoading: boolean;
   error: string | null;
 }
@@ -26,6 +28,23 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
   const [influxEndpoint, setEndpoint] = useState<string | null>(null);
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [currentBucket, setCurrentBucket] = useState<string | null>(null);
+  const [activeBucket, setActiveBucketState] = useState<string | null>(null);
+  
+  // Function to set active bucket and save it to config
+  const setActiveBucket = (bucketName: string | null) => {
+    setActiveBucketState(bucketName);
+    
+    // Save to config file
+    fetch('/api/config', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ activeBucket: bucketName })
+    }).catch(err => {
+      console.error('Error saving active bucket to config:', err);
+    });
+  };
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +75,29 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
           // Use the first bucket as the current bucket
           const firstBucketName = Object.keys(config.buckets)[0];
           setCurrentBucket(firstBucketName);
+          
+          // Set active bucket for data tab
+          // If there's only one bucket (excluding _internal), use that as default
+          // Otherwise use the first non-internal bucket
+          const bucketNames = Object.keys(config.buckets);
+          const nonInternalBuckets = bucketNames.filter(name => name !== '_internal');
+          
+          if (nonInternalBuckets.length === 1) {
+            // Only one non-internal bucket exists, use it
+            setActiveBucket(nonInternalBuckets[0]);
+          } else if (nonInternalBuckets.length > 1) {
+            // Multiple non-internal buckets, use the first one
+            setActiveBucket(nonInternalBuckets[0]);
+          } else {
+            // Only _internal bucket exists, set to null
+            setActiveBucket(null);
+          }
+          
+          // If activeBucket was previously set in config, use that
+          // If activeBucket was previously set in config, use that
+          if (config.activeBucket) {
+            setActiveBucketState(config.activeBucket);
+          }
         }
       } catch (err) {
         setError('Failed to load configuration from server');
@@ -263,18 +305,23 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
     influxEndpoint,
     adminToken,
     isConfigured,
-
     currentBucket,
+    activeBucket,
     saveConfiguration,
     createBucket,
     createToken,
     getBuckets,
     getTokens,
+    setActiveBucket,
     isLoading,
     error
   };
 
-  return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>;
+  return (
+    <ConfigContext.Provider value={value}>
+      {children}
+    </ConfigContext.Provider>
+  );
 };
 
 export const useConfig = () => {

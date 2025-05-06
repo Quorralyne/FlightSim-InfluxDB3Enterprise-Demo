@@ -9,6 +9,7 @@ const configFilePath = path.join(process.cwd(), 'config.json');
 interface Config {
   influxEndpoint?: string;
   adminToken?: string;
+  activeBucket?: string | null;
 }
 
 // Helper to read the config file

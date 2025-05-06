@@ -4,13 +4,23 @@ import { useState, useEffect } from 'react';
 import Notice from '@/components/ui/Notice';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
-import { TrashIcon, RefreshIcon, BucketIcon, TicketIcon } from '@/components/ui/icons/Icons';
+import { TrashIcon, RefreshIcon, BucketIcon, TicketIcon, LinkIcon } from '@/components/ui/icons/Icons';
 import TokenModal from '@/components/buckets/TokenModal';
 import CreateBucketForm from '@/components/buckets/CreateBucketForm';
 import styles from './buckets.module.css';
 import AppLayout from '../app-layout';
+import { useConfig } from '@/contexts/ConfigContext';
+
+// Type for bucket status
+type BucketStatus = 'online' | 'offline' | 'loading';
+
+// Interface for bucket status map
+interface BucketStatusMap {
+  [bucketName: string]: BucketStatus;
+}
 
 export default function BucketsPage() {
+  const { activeBucket, setActiveBucket } = useConfig();
   const [databases, setDatabases] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,11 +31,69 @@ export default function BucketsPage() {
   const [selectedBucket, setSelectedBucket] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [bucketStatuses, setBucketStatuses] = useState<BucketStatusMap>({});
 
   // Fetch databases when component mounts
   useEffect(() => {
     fetchDatabases();
   }, []);
+  
+  // Set up polling for bucket statuses
+  useEffect(() => {
+    if (databases.length === 0) return;
+    
+    const pollBucketStatuses = () => {
+      databases.forEach((bucket: string) => {
+        if (bucket !== '_internal') { // Skip _internal bucket
+          fetchBucketStatus(bucket);
+        }
+      });
+    };
+    
+    // Initial poll
+    pollBucketStatuses();
+    
+    // Set up interval for polling
+    const pollInterval = setInterval(pollBucketStatuses, 1000); // Poll every second
+    
+    // Clean up interval on unmount
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [databases]); // Re-establish polling when database list changes
+
+  // Function to fetch bucket status
+  const fetchBucketStatus = async (bucketName: string) => {
+    try {
+      // Set status to loading while fetching
+      setBucketStatuses(prev => ({
+        ...prev,
+        [bucketName]: 'loading'
+      }));
+      
+      const response = await fetch(`/api/influxdb/bucket/${encodeURIComponent(bucketName)}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch bucket status: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        setBucketStatuses(prev => ({
+          ...prev,
+          [bucketName]: data.status
+        }));
+      } else {
+        throw new Error(data.error || 'Failed to fetch bucket status');
+      }
+    } catch (err) {
+      console.error(`Error fetching status for bucket ${bucketName}:`, err);
+      setBucketStatuses(prev => ({
+        ...prev,
+        [bucketName]: 'offline'
+      }));
+    }
+  };
 
   // Function to fetch databases using our server-side API
   const fetchDatabases = async () => {
@@ -43,7 +111,39 @@ export default function BucketsPage() {
 
       const data = await response.json();
       if (data.success) {
-        setDatabases(data.buckets || []);
+        const buckets = data.buckets || [];
+        setDatabases(buckets);
+        
+        // Set default active bucket if none is selected yet
+        if (activeBucket === null) {
+          // Filter out the _internal bucket
+          const nonInternalBuckets = buckets.filter((bucket: string) => bucket !== '_internal');
+          
+          if (nonInternalBuckets.length === 1) {
+            // If there's only one non-internal bucket, use that
+            setActiveBucket(nonInternalBuckets[0]);
+          } else if (nonInternalBuckets.length > 1) {
+            // If there are multiple buckets, use the first non-internal one
+            setActiveBucket(nonInternalBuckets[0]);
+          } else {
+            // If only _internal bucket exists, set to null
+            setActiveBucket(null);
+          }
+        }
+        
+        // Initialize all buckets with 'offline' status
+        const initialStatuses: BucketStatusMap = {};
+        buckets.forEach((bucket: string) => {
+          initialStatuses[bucket] = 'offline';
+        });
+        setBucketStatuses(initialStatuses);
+        
+        // Fetch status for each bucket
+        buckets.forEach((bucket: string) => {
+          if (bucket !== '_internal') { // Skip _internal bucket
+            fetchBucketStatus(bucket);
+          }
+        });
       } else {
         throw new Error(data.error || 'Failed to fetch buckets');
       }
@@ -146,10 +246,30 @@ export default function BucketsPage() {
           <ul className={styles.databaseList}>
             {databases.map((db, index) => (
               <li key={index} className={styles.databaseItem}>
-                <div className={styles.databaseName}>{db}</div>
+                <div className={styles.databaseName}>
+                  <span 
+                    className={`${styles.statusIndicator} ${
+                      bucketStatuses[db] === 'online' 
+                        ? styles.statusOnline 
+                        : styles.statusOffline
+                    }`} 
+                    title={`Status: ${bucketStatuses[db] || 'unknown'}`}
+                  />
+                  {db}
+                </div>
                 {/* Don't allow deletion of _internal database */}
                 {db !== '_internal' && (
                   <div className={styles.databaseActions}>
+                    <Button 
+                      variant="outline" 
+                      size="small"
+                      onClick={() => setActiveBucket(db)}
+                      className={`${styles.actionButton} ${activeBucket === db ? styles.activeButton : ''}`}
+                      aria-label="Link bucket to data tab"
+                      title="Link this bucket to the data tab"
+                    >
+                      <LinkIcon size={16} />
+                    </Button>
                     <Button 
                       variant="outline" 
                       size="small"
