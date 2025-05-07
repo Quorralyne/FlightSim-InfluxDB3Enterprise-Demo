@@ -11,12 +11,15 @@ import styles from './buckets.module.css';
 import AppLayout from '../app-layout';
 import { useConfig } from '@/contexts/ConfigContext';
 
-// Type for bucket status
-type BucketStatus = 'online' | 'offline' | 'loading';
+// Interface for bucket info
+interface BucketInfo {
+  status: 'online' | 'offline';
+  hasTable: boolean;
+}
 
-// Interface for bucket status map
-interface BucketStatusMap {
-  [bucketName: string]: BucketStatus;
+// Interface for bucket info map
+interface BucketInfoMap {
+  [bucketName: string]: BucketInfo;
 }
 
 export default function BucketsPage() {
@@ -31,17 +34,17 @@ export default function BucketsPage() {
   const [selectedBucket, setSelectedBucket] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [bucketStatuses, setBucketStatuses] = useState<BucketStatusMap>({});
+  const [bucketInfos, setBucketInfos] = useState<BucketInfoMap>({});
 
   // Fetch databases when component mounts
   useEffect(() => {
     fetchDatabases();
   }, []);
-  
+
   // Set up polling for bucket statuses
   useEffect(() => {
     if (databases.length === 0) return;
-    
+
     const pollBucketStatuses = () => {
       databases.forEach((bucket: string) => {
         if (bucket !== '_internal') { // Skip _internal bucket
@@ -49,13 +52,13 @@ export default function BucketsPage() {
         }
       });
     };
-    
+
     // Initial poll
     pollBucketStatuses();
-    
+
     // Set up interval for polling
-    const pollInterval = setInterval(pollBucketStatuses, 1000); // Poll every second
-    
+    const pollInterval = setInterval(pollBucketStatuses, 5000);
+
     // Clean up interval on unmount
     return () => {
       clearInterval(pollInterval);
@@ -65,33 +68,90 @@ export default function BucketsPage() {
   // Function to fetch bucket status
   const fetchBucketStatus = async (bucketName: string) => {
     try {
-      // Set status to loading while fetching
-      setBucketStatuses(prev => ({
-        ...prev,
-        [bucketName]: 'loading'
-      }));
-      
       const response = await fetch(`/api/influxdb/bucket/${encodeURIComponent(bucketName)}`);
-      
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch bucket status: ${response.statusText}`);
+        throw new Error(`Failed to fetch bucket status for ${bucketName}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      if (data.success) {
-        setBucketStatuses(prev => ({
+      const bucketInfo = {
+        status: data.status,
+        hasTable: data.hasTable
+      };
+      
+      // Update the bucket info in state
+      setBucketInfos(prev => {
+        const updatedInfos = {
           ...prev,
-          [bucketName]: data.status
-        }));
-      } else {
-        throw new Error(data.error || 'Failed to fetch bucket status');
-      }
+          [bucketName]: bucketInfo
+        };
+        
+        // Check if this is the current active bucket and it's now offline or doesn't have a table
+        if (bucketName === activeBucket && (bucketInfo.status !== 'online' || !bucketInfo.hasTable)) {
+          console.log(`Active bucket ${bucketName} is now ${bucketInfo.status} or doesn't have a table (hasTable: ${bucketInfo.hasTable})`);
+          
+          // Find the next available bucket that's online and has a table
+          const availableBuckets = Object.entries(updatedInfos)
+            .filter(([name, info]) => 
+              name !== '_internal' && 
+              info.status === 'online' && 
+              info.hasTable
+            )
+            .map(([name]) => name);
+          
+          if (availableBuckets.length > 0) {
+            const nextBucket = availableBuckets[0];
+            console.log(`Setting active bucket to next available: ${nextBucket}`);
+            setActiveBucket(nextBucket);
+          } else {
+            console.log('No available buckets found, setting active bucket to null');
+            setActiveBucket(null);
+          }
+        }
+        
+        // If no active bucket is set yet and this bucket is online and has a table,
+        // set this as the active bucket
+        if (activeBucket === null && bucketInfo.status === 'online' && bucketInfo.hasTable) {
+          console.log(`Setting active bucket to ${bucketName} (status: ${bucketInfo.status}, hasTable: ${bucketInfo.hasTable})`);
+          setActiveBucket(bucketName);
+        }
+        
+        return updatedInfos;
+      });
     } catch (err) {
       console.error(`Error fetching status for bucket ${bucketName}:`, err);
-      setBucketStatuses(prev => ({
+      setBucketInfos(prev => ({
         ...prev,
-        [bucketName]: 'offline'
+        [bucketName]: {
+          status: 'offline',
+          hasTable: false
+        }
       }));
+      
+      // If this was the active bucket, check if we need to change it
+      if (bucketName === activeBucket) {
+        console.log(`Active bucket ${bucketName} is now offline due to error`);
+        
+        // Find another bucket that's online and has a table
+        const availableBuckets = Object.entries(bucketInfos)
+          .filter(([name, info]) => 
+            name !== '_internal' && 
+            name !== bucketName && 
+            info.status === 'online' && 
+            info.hasTable
+          )
+          .map(([name]) => name);
+        
+        if (availableBuckets.length > 0) {
+          const nextBucket = availableBuckets[0];
+          console.log(`Setting active bucket to next available: ${nextBucket}`);
+          setActiveBucket(nextBucket);
+        } else {
+          console.log('No available buckets found, setting active bucket to null');
+          setActiveBucket(null);
+        }
+      }
     }
   };
 
@@ -113,31 +173,23 @@ export default function BucketsPage() {
       if (data.success) {
         const buckets = data.buckets || [];
         setDatabases(buckets);
-        
-        // Set default active bucket if none is selected yet
-        if (activeBucket === null) {
-          // Filter out the _internal bucket
-          const nonInternalBuckets = buckets.filter((bucket: string) => bucket !== '_internal');
-          
-          if (nonInternalBuckets.length === 1) {
-            // If there's only one non-internal bucket, use that
-            setActiveBucket(nonInternalBuckets[0]);
-          } else if (nonInternalBuckets.length > 1) {
-            // If there are multiple buckets, use the first non-internal one
-            setActiveBucket(nonInternalBuckets[0]);
-          } else {
-            // If only _internal bucket exists, set to null
-            setActiveBucket(null);
-          }
+
+        // Initially set activeBucket to null
+        // We'll set it to the first bucket that has hasTable: true and status: online
+        // when we fetch the bucket statuses
+        if (activeBucket !== null) {
+          console.log('Current active bucket:', activeBucket);
+        } else {
+          console.log('No active bucket set yet');
         }
-        
-        // Initialize all buckets with 'offline' status
-        const initialStatuses: BucketStatusMap = {};
+
+        // Initialize all buckets with default info
+        const initialBucketInfos: BucketInfoMap = {};
         buckets.forEach((bucket: string) => {
-          initialStatuses[bucket] = 'offline';
+          initialBucketInfos[bucket] = { status: 'offline', hasTable: false };
         });
-        setBucketStatuses(initialStatuses);
-        
+        setBucketInfos(initialBucketInfos);
+
         // Fetch status for each bucket
         buckets.forEach((bucket: string) => {
           if (bucket !== '_internal') { // Skip _internal bucket
@@ -164,44 +216,44 @@ export default function BucketsPage() {
     closeModal();
     fetchDatabases();
   };
-  
+
   // Handle delete modal open/close
   const openDeleteModal = (databaseName: string) => {
     setDatabaseToDelete(databaseName);
     setDeleteError(null);
     setIsDeleteModalOpen(true);
   };
-  
+
   const closeDeleteModal = () => {
     setIsDeleteModalOpen(false);
     setDatabaseToDelete(null);
   };
-  
+
   // Handle token modal open/close
   const openTokenModal = (bucketName: string) => {
     setSelectedBucket(bucketName);
     setIsTokenModalOpen(true);
   };
-  
+
   const closeTokenModal = () => {
     setIsTokenModalOpen(false);
     setSelectedBucket(null);
   };
-  
+
   // Handle bucket deletion
   const handleDeleteDatabase = async () => {
     if (!databaseToDelete) return;
-    
+
     setIsDeleting(true);
     setDeleteError(null);
-    
+
     try {
       const response = await fetch(`/api/influxdb/bucket?name=${encodeURIComponent(databaseToDelete)}`, {
         method: 'DELETE'
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         // Close the modal and refresh the bucket list
         closeDeleteModal();
@@ -226,7 +278,7 @@ export default function BucketsPage() {
             <Button onClick={openModal}>
               Create Bucket <BucketIcon size={16} className={styles.buttonIcon} />
             </Button>
-            <Button 
+            <Button
               variant="secondary"
               onClick={fetchDatabases}
               disabled={isLoading}
@@ -235,7 +287,7 @@ export default function BucketsPage() {
             </Button>
           </div>
         </div>
-        
+
         {isLoading ? (
           <p>Loading databases...</p>
         ) : error ? (
@@ -247,31 +299,32 @@ export default function BucketsPage() {
             {databases.map((db, index) => (
               <li key={index} className={styles.databaseItem}>
                 <div className={styles.databaseName}>
-                  <span 
-                    className={`${styles.statusIndicator} ${
-                      bucketStatuses[db] === 'online' 
-                        ? styles.statusOnline 
-                        : styles.statusOffline
-                    }`} 
-                    title={`Status: ${bucketStatuses[db] || 'unknown'}`}
+                  <span
+                    className={`${styles.statusIndicator} ${bucketInfos[db]?.status === 'online'
+                      ? styles.statusOnline
+                      : styles.statusOffline
+                      }`}
+                    title={`Status: ${bucketInfos[db]?.status || 'unknown'}`}
                   />
                   {db}
                 </div>
                 {/* Don't allow deletion of _internal database */}
                 {db !== '_internal' && (
                   <div className={styles.databaseActions}>
-                    <Button 
-                      variant="outline" 
-                      size="small"
-                      onClick={() => setActiveBucket(db)}
-                      className={`${styles.actionButton} ${activeBucket === db ? styles.activeButton : ''}`}
-                      aria-label="Link bucket to data tab"
-                      title="Link this bucket to the data tab"
-                    >
-                      <LinkIcon size={16} />
-                    </Button>
-                    <Button 
-                      variant="outline" 
+                    {bucketInfos[db]?.status === 'online' && bucketInfos[db]?.hasTable && (
+                      <Button
+                        variant="outline"
+                        size="small"
+                        onClick={() => setActiveBucket(db)}
+                        className={`${styles.actionButton} ${activeBucket === db ? styles.activeButton : ''}`}
+                        aria-label="Link bucket to data tab"
+                        title="Link this bucket to the data tab"
+                      >
+                        <LinkIcon size={16} />
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
                       size="small"
                       onClick={() => openTokenModal(db)}
                       className={styles.actionButton}
@@ -279,8 +332,8 @@ export default function BucketsPage() {
                     >
                       <TicketIcon size={16} />
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="small"
                       onClick={() => openDeleteModal(db)}
                       className={styles.deleteButton}
@@ -294,8 +347,8 @@ export default function BucketsPage() {
             ))}
           </ul>
         )}
-        
-        
+
+
         {/* Create Bucket Modal */}
         <Modal
           isOpen={isModalOpen}
@@ -308,7 +361,7 @@ export default function BucketsPage() {
             onCancel={closeModal}
           />
         </Modal>
-        
+
         {/* Delete Confirmation Modal */}
         <Modal
           isOpen={isDeleteModalOpen}
@@ -318,19 +371,19 @@ export default function BucketsPage() {
         >
           <div className={styles.deleteConfirmation}>
             {deleteError && <Notice type="error">{deleteError}</Notice>}
-            
+
             <p>Are you sure you want to delete the database <strong>{databaseToDelete}</strong>?</p>
             <p className={styles.deleteWarning}>This action cannot be undone. All data in this database will be permanently deleted.</p>
-            
+
             <div className={styles.deleteActions}>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={closeDeleteModal}
                 disabled={isDeleting}
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleDeleteDatabase}
                 disabled={isDeleting}
               >
@@ -339,7 +392,7 @@ export default function BucketsPage() {
             </div>
           </div>
         </Modal>
-        
+
         {/* Token Modal */}
         <TokenModal
           isOpen={isTokenModalOpen}

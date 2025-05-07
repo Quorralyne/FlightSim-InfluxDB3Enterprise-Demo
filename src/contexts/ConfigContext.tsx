@@ -31,19 +31,44 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
   const [activeBucket, setActiveBucketState] = useState<string | null>(null);
   
   // Function to set active bucket and save it to config
-  const setActiveBucket = (bucketName: string | null) => {
+  const setActiveBucket = async (bucketName: string | null) => {
+    console.log(`Setting active bucket to: ${bucketName}`);
     setActiveBucketState(bucketName);
     
     // Save to config file
-    fetch('/api/config', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ activeBucket: bucketName })
-    }).catch(err => {
+    try {
+      // First get the current config to ensure we're only updating the activeBucket property
+      const configResponse = await fetch('/api/config');
+      if (!configResponse.ok) {
+        console.error(`Failed to get current config: ${configResponse.status} ${configResponse.statusText}`);
+        return;
+      }
+      
+      const currentConfig = await configResponse.json();
+      
+      // Now update only the activeBucket property
+      const response = await fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          ...currentConfig,
+          activeBucket: bucketName 
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Failed to save active bucket to config: ${response.status} ${response.statusText}`, errorText);
+        return;
+      }
+      
+      const result = await response.json();
+      console.log('Active bucket saved to config:', result);
+    } catch (err) {
       console.error('Error saving active bucket to config:', err);
-    });
+    }
   };
 
   const [isLoading, setIsLoading] = useState<boolean>(true);

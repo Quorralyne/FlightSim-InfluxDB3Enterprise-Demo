@@ -12,7 +12,7 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { influxEndpoint } = useConfig();
+  const { influxEndpoint, activeBucket } = useConfig();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -48,12 +48,21 @@ export default function AppLayout({
           >
             Buckets
           </Link>
-          <Link 
-            href="/data" 
-            className={`${styles.tabButton} ${isActive('data') ? styles.active : ''}`}
-          >
-            Data
-          </Link>
+          {activeBucket ? (
+            <Link 
+              href="/data" 
+              className={`${styles.tabButton} ${isActive('data') ? styles.active : ''}`}
+            >
+              Data
+            </Link>
+          ) : (
+            <span 
+              className={`${styles.tabButton} ${styles.disabled}`}
+              title="No active bucket available. Please select a bucket with data first."
+            >
+              Data
+            </span>
+          )}
         </div>
         <div className={styles.tabContainer}>
           {children}
