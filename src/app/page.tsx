@@ -8,6 +8,7 @@ import styles from './page.module.css';
 
 export default function Home() {
   const { isConfigured } = useConfig();
+  const router = useRouter();
 
   // If not configured, show the configuration wizard
   if (!isConfigured) {
@@ -15,7 +16,6 @@ export default function Home() {
   }
 
   // Redirect to the list of buckets when configuration is complete
-  const router = useRouter();
   
   useEffect(() => {
     if (isConfigured) {
