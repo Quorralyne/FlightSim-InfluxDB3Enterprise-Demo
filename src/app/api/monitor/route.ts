@@ -130,71 +130,46 @@ async function collectAndSendData() {
             return;
         }
 
-        // If dataPath is not in config, prompt user to add it
         if (!config.dataPath) {
             console.error('[DirSizeMonitor] dataPath is missing in config. Please add it to config.json');
             return;
         }
 
-        // Try different directory structures
         let dbDirectory = null;
         let compactedDirectory = null;
-        
-        // Option 1: Direct structure (dataPath/dbs and dataPath/c)
-        const dbsPath1 = path.join(config.dataPath, 'dbs');
-        const compactedPath1 = path.join(config.dataPath, 'c');
-        
-        // Option 2: Bucket-based structure (dataPath/bucketName/dbs and dataPath/bucketName/c)
+
         const bucketName = config.activeBucket || 'flightsim';
-        const dbsPath2 = path.join(config.dataPath, bucketName, 'dbs');
-        const compactedPath2 = path.join(config.dataPath, bucketName, 'c');
-        
-        // Check which structure exists
-        if (fs.existsSync(dbsPath1)) {
-            console.log(`[DirSizeMonitor] Using direct structure: ${dbsPath1}`);
-            // Find matching flightsim database directory
-            dbDirectory = findMatchingDirectory(dbsPath1, 'flightsim-\\d+');
-            if (fs.existsSync(compactedPath1)) {
-                compactedDirectory = compactedPath1;
-            }
-        } else if (fs.existsSync(dbsPath2)) {
-            console.log(`[DirSizeMonitor] Using bucket-based structure: ${dbsPath2}`);
-            // Find matching flightsim database directory
-            dbDirectory = findMatchingDirectory(dbsPath2, 'flightsim-\\d+');
-            if (fs.existsSync(compactedPath2)) {
-                compactedDirectory = compactedPath2;
-            }
+        const dbsPath = path.join(config.dataPath, bucketName, 'c');
+        const compactedPath = path.join(config.dataPath, bucketName, 'dbs');
+
+        if (fs.existsSync(dbsPath)) {
+            dbDirectory = dbsPath;
         }
-        
+
+        if (fs.existsSync(compactedPath)) {
+            compactedDirectory = findMatchingDirectory(compactedPath, 'flightsim-\\d+');
+        }
+
         if (!dbDirectory) {
-            console.error('[DirSizeMonitor] Could not find a matching flightsim database directory');
-            console.error(`[DirSizeMonitor] Checked paths: ${dbsPath1}, ${dbsPath2}`);
+            console.error('[DirSizeMonitor] Could not find DB directory');
+            console.error(`[DirSizeMonitor] Checked path: ${dbsPath}`);
             return;
         }
-        
+
         if (!compactedDirectory) {
             console.error('[DirSizeMonitor] Could not find compacted directory');
-            console.error(`[DirSizeMonitor] Checked paths: ${compactedPath1}, ${compactedPath2}`);
-            // Continue without compacted directory
+            console.error(`[DirSizeMonitor] Checked path: ${compactedPath}`);
+            return;
         }
 
-        // Calculate database directory size
         console.log(`[DirSizeMonitor] Calculating size for DB directory: ${dbDirectory}`);
         const dbSize = calculateDirSize(dbDirectory);
-        
-        // Calculate compacted directory size if available
-        let compactedSize = 0;
-        if (compactedDirectory && fs.existsSync(compactedDirectory)) {
-            console.log(`[DirSizeMonitor] Calculating size for compacted directory: ${compactedDirectory}`);
-            compactedSize = calculateDirSize(compactedDirectory);
-        } else {
-            console.log('[DirSizeMonitor] Skipping compacted directory size calculation');
-        }
 
-        // Create timestamp in nanoseconds
+        console.log(`[DirSizeMonitor] Calculating size for compacted directory: ${compactedDirectory}`);
+        const compactedSize = calculateDirSize(compactedDirectory);
+
         const timestamp = Date.now() * 1000000;
 
-        // Prepare data in line protocol format
         const data = [
             `directory_stats,folder=db_size directory_size_bytes=${dbSize} ${timestamp}`,
             `directory_stats,folder=compacted_size directory_size_bytes=${compactedSize} ${timestamp}`
@@ -202,7 +177,6 @@ async function collectAndSendData() {
 
         console.log('[DirSizeMonitor] Data to send:', data);
 
-        // Send to InfluxDB
         await writeToInfluxDB(data, config);
 
     } catch (error) {

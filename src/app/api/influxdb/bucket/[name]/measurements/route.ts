@@ -53,7 +53,7 @@ export async function GET(
         metric: item.topic.replace('msfs/', ''),
         value: item.value,
         timestamp: item.time,
-        unit: ''
+        unit: item.unit
       })));
     }
 

@@ -470,7 +470,7 @@ export default function DataPage() {
                   ></canvas>
                 </div>
                 <div className={styles.statLabel}>
-                  Last 5 minutes (10s intervals)
+                  Last hour (10s intervals)
                 </div>
               </div>
             </div>
@@ -490,7 +490,7 @@ export default function DataPage() {
                   ></canvas>
                 </div>
                 <div className={styles.statLabel}>
-                  Last 5 minutes (10s intervals)
+                  Last hour (10s intervals)
                 </div>
               </div>
             </div>
