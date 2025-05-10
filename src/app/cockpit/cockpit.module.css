@@ -84,12 +84,6 @@
   text-align: center;
 }
 
-.statLabel {
-  font-size: 0.9rem;
-  color: #666;
-  text-align: center;
-}
-
 .graphContainer {
   height: 200px;
   width: 100%;
@@ -124,7 +118,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #f0f8ff;
+  overflow: hidden;
+  background-color: transparent;
 }
 
 .bankIndicator .planeContainer {
@@ -136,7 +131,7 @@
   align-items: center;
   top: 0;
   left: 0;
-  z-index: 2;
+  z-index: 3;
 }
 
 .pitchArrow {
@@ -157,34 +152,87 @@
   background-color: #333;
   border-radius: 50% 50% 20% 20%;
   z-index: 2;
+  left: 50%; /* Center horizontally */
+  transform: translateX(-50%); /* Ensure perfect centering */
 }
 
 .bankIndicator .planeWings {
   position: absolute;
   width: 100px;
   height: 8px;
-  background-color: #3182ce;
+  background-color: #e53e3e;
   border-radius: 4px;
   z-index: 1;
+  left: 50%; /* Center horizontally */
+  transform: translateX(-50%); /* Ensure perfect centering */
 }
 
 .bankIndicator .planeTail {
   position: absolute;
   width: 8px;
   height: 20px;
-  background-color: #3182ce;
+  background-color: #e53e3e;
   border-radius: 2px 2px 0 0;
   margin-bottom: 48px;
   z-index: 10;
+  left: 50%; /* Center horizontally */
+  transform: translateX(-50%); /* Ensure perfect centering */
 }
 
 /* Horizon line */
-.bankIndicator .horizonLine {
+.horizonContainer .horizonLine {
   position: absolute;
   width: 140px;
   height: 2px;
-  background-color: #666;
+  background-color: #ffffff;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+/* Horizon container */
+.horizonContainer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
   z-index: 0;
+
+}
+
+/* Sky background */
+.skyBackground {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  top: -150px;
+  left: -75px;
+  background-color: #77befc;
+  z-index: 0;
+}
+
+/* Ground background */
+.groundBackground {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  top: 75px;
+  left: -75px;
+  background-color: #6b340d;
+  z-index: 0;
+}
+
+/* Bank markers container - separates rotation from pitch movement */
+.bankMarkersContainer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
 }
 
 /* Bank angle markers */
@@ -193,7 +241,6 @@
   width: 150px;
   height: 150px;
   border-radius: 50%;
-  z-index: 1;
   top: 0;
   left: 0;
   pointer-events: none;
@@ -203,25 +250,32 @@
   position: absolute;
   width: 2px;
   height: 10px;
-  background-color: #333;
-  top: 5px;
-  left: 72px; /* Half of the width of bankMarkers */
-  transform-origin: center 70px; /* This puts the rotation origin at the center of the circle */
+  background-color: white;
+  top: 0px;
+  left: 72px;
+  transform-origin: center 75px;
 }
 
 .bankIndicator .markerZero {
   height: 15px;
   width: 3px;
+  top: 0px;
+}
+
+.bankIndicator .markerLabeled {
+  width: 3px;
+  height: 12px;
 }
 
 .bankIndicator .markerLabel {
   position: absolute;
   font-size: 10px;
-  color: #333;
+  color: white;
   top: -18px;
   left: 0;
   transform: translateX(-50%);
   font-weight: bold;
+  text-shadow: 0px 0px 2px rgba(0, 0, 0, 0.7);
 }
 
 /* Bank angle pointer */
@@ -233,20 +287,13 @@
   border-right: 8px solid transparent;
   border-bottom: 12px solid #e53e3e;
   top: 0;
-  left: 74px;
+  left: 73px;
   transform: translateX(-50%);
-  z-index: 3;
+  z-index: 4;
 }
 
 .pitchIndicator .pitchLine {
   transform: rotate(0deg);
-}
-
-.attitudeValue {
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin-top: 10px;
-  color: #333;
 }
 
 .tableContainer {

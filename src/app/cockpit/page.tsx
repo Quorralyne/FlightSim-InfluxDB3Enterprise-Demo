@@ -308,28 +308,37 @@ export default function CockpitPage() {
 
           {/* Flight Attitude Row - Side by side */}
           <div className={styles.graphsRow}>
-            {/* Bank Angle */}
             <div className={styles.card}>
               <div className={styles.cardHeader}>
-                <h3 className={styles.cardTitle}>Bank Angle</h3>
+                <h3 className={styles.cardTitle}>Attitude Indicator</h3>
               </div>
               <div className={styles.cardContent}>
                 <div className={styles.attitudeContainer}>
                   {(() => {
-                    // Get bank angle value and invert it (multiply by -1) so positive values indicate left bank
                     const bankAngleRaw = measurements.find(m => m.metric === 'flight_bank')?.value || 0;
-                    const bankAngle = -bankAngleRaw; // Invert the angle
-                    const bankAngleStyle = {
-                      transform: `rotate(${bankAngle}deg)`,
+                    const bankAngle = -bankAngleRaw;
+
+                    // Get pitch angle value
+                    const pitchAngle = measurements.find(m => m.metric === 'flight_pitch')?.value || 0;
+
+                    // Calculate vertical offset for pitch (scale to fit within the indicator)
+                    // We're mapping -35 to +35 degrees to a reasonable pixel range
+                    // Negative pitch moves horizon up (aircraft nose down), positive pitch moves horizon down (aircraft nose up)
+                    const pitchOffset = -pitchAngle * 2;
+
+                    // Combined style for horizon elements with both rotation and vertical offset
+                    const horizonStyle = {
+                      transform: `rotate(${-bankAngle}deg) translateY(${pitchOffset}px)`,
                       transition: 'transform 0.2s ease-out'
                     };
 
-                    // Create bank angle markers at 0, 10, 20, and 30 degrees (both left and right)
+                    // Create bank angle markers
                     const bankMarkers: React.ReactNode[] = [];
-                    const markerAngles = [0, 10, 20, 30, -10, -20, -30];
+                    const markerAngles = [0, 10, 20, 30, 60, 90, -10, -20, -30, -60, -90];
 
                     markerAngles.forEach(angle => {
                       const isZero = angle === 0;
+                      const isLabeledMarker = angle === 0 || Math.abs(angle) === 30 || Math.abs(angle) === 60 || Math.abs(angle) === 90;
                       const markerStyle = {
                         transform: `rotate(${angle}deg)`
                       };
@@ -341,10 +350,10 @@ export default function CockpitPage() {
                       bankMarkers.push(
                         <div
                           key={`marker-${angle}`}
-                          className={`${styles.marker} ${isZero ? styles.markerZero : ''}`}
+                          className={`${styles.marker} ${isZero ? styles.markerZero : ''} ${isLabeledMarker ? styles.markerLabeled : ''}`}
                           style={markerStyle}
                         >
-                          {(angle === 0 || Math.abs(angle) === 30) && (
+                          {isLabeledMarker && (
                             <div className={styles.markerLabel} style={labelStyle}>
                               {Math.abs(angle)}°
                             </div>
@@ -356,61 +365,32 @@ export default function CockpitPage() {
                     return (
                       <div className={styles.attitudeIndicator}>
                         <div className={styles.bankIndicator}>
-                          {/* Fixed elements */}
-                          <div className={styles.horizonLine}></div>
-                          <div className={styles.bankMarkers}>
-                            {bankMarkers}
+                          <div className={styles.bankMarkersContainer} style={{ transform: `rotate(${-bankAngle}deg)` }}>
+                            <div className={styles.bankMarkers}>
+                              {bankMarkers}
+                            </div>
                           </div>
-                          
-                          {/* Rotating plane container */}
-                          <div className={styles.planeContainer} style={bankAngleStyle}>
+
+                          <div className={styles.horizonContainer} style={horizonStyle}>
+                            <div className={styles.horizonLine}></div>
+                            <div className={styles.skyBackground}></div>
+                            <div className={styles.groundBackground}></div>
+                          </div>
+
+                          <div className={styles.planeContainer}>
                             <div className={styles.bankPointer}></div>
                             <div className={styles.planeBody}></div>
                             <div className={styles.planeWings}></div>
                             <div className={styles.planeTail}></div>
                           </div>
                         </div>
-                        <div className={styles.attitudeValue}>{bankAngle.toFixed(1)}°</div>
                       </div>
                     );
                   })()}
                 </div>
-                <div className={styles.statLabel}>
-                  Positive values indicate left bank
-                </div>
               </div>
             </div>
 
-            {/* Pitch Angle */}
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <h3 className={styles.cardTitle}>Pitch Angle</h3>
-              </div>
-              <div className={styles.cardContent}>
-                <div className={styles.attitudeContainer}>
-                  {(() => {
-                    const pitchAngle = measurements.find(m => m.metric === 'flight_pitch')?.value || 0;
-                    const pitchAngleStyle = {
-                      transform: `rotate(${pitchAngle}deg)`,
-                      transition: 'transform 0.2s ease-out'
-                    };
-
-                    return (
-                      <div className={styles.attitudeIndicator}>
-                        <div className={styles.pitchIndicator} style={pitchAngleStyle}>
-                          <div className={styles.pitchLine}></div>
-                          <div className={styles.pitchArrow}></div>
-                        </div>
-                        <div className={styles.attitudeValue}>{pitchAngle.toFixed(1)}°</div>
-                      </div>
-                    );
-                  })()}
-                </div>
-                <div className={styles.statLabel}>
-                  Positive values indicate nose up
-                </div>
-              </div>
-            </div>
           </div>
 
         </div>
