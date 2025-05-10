@@ -50,7 +50,7 @@ export async function GET(
     if (response.ok) {
       bucketInfo.hasTable = true;
       const data = await response.json();
-      bucketInfo.status = data[0].online > 0 ? "online" : "offline";
+      bucketInfo.status = data[0]?.online > 0 ? "online" : "offline";
     }
 
     return NextResponse.json(bucketInfo);

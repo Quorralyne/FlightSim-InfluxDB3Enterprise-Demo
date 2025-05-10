@@ -64,6 +64,55 @@ export default function BucketsPage() {
       clearInterval(pollInterval);
     };
   }, [databases]); // Re-establish polling when database list changes
+  
+  // Handle active bucket changes based on bucket status changes
+  useEffect(() => {
+    // Skip if no buckets are loaded yet
+    if (Object.keys(bucketInfos).length === 0) return;
+    
+    // Check if current active bucket is offline or doesn't have a table
+    if (activeBucket && bucketInfos[activeBucket]) {
+      const currentBucketInfo = bucketInfos[activeBucket];
+      if (currentBucketInfo.status !== 'online' || !currentBucketInfo.hasTable) {
+        console.log(`Active bucket ${activeBucket} is now ${currentBucketInfo.status} or doesn't have a table (hasTable: ${currentBucketInfo.hasTable})`);
+        
+        // Find the next available bucket that's online and has a table
+        const availableBuckets = Object.entries(bucketInfos)
+          .filter(([name, info]) => 
+            name !== '_internal' && 
+            info.status === 'online' && 
+            info.hasTable
+          )
+          .map(([name]) => name);
+        
+        if (availableBuckets.length > 0) {
+          const nextBucket = availableBuckets[0];
+          console.log(`Setting active bucket to next available: ${nextBucket}`);
+          setActiveBucket(nextBucket);
+        } else {
+          console.log('No available buckets found, setting active bucket to null');
+          setActiveBucket(null);
+        }
+      }
+    }
+    
+    // If no active bucket is set yet, try to find one that's online and has a table
+    if (activeBucket === null) {
+      const availableBuckets = Object.entries(bucketInfos)
+        .filter(([name, info]) => 
+          name !== '_internal' && 
+          info.status === 'online' && 
+          info.hasTable
+        )
+        .map(([name]) => name);
+      
+      if (availableBuckets.length > 0) {
+        const nextBucket = availableBuckets[0];
+        console.log(`Setting active bucket to available bucket: ${nextBucket}`);
+        setActiveBucket(nextBucket);
+      }
+    }
+  }, [bucketInfos, activeBucket]); // Run when bucket infos or active bucket changes
 
   // Function to fetch bucket status
   const fetchBucketStatus = async (bucketName: string) => {
@@ -80,43 +129,12 @@ export default function BucketsPage() {
         hasTable: data.hasTable
       };
       
-      // Update the bucket info in state
+      // Update the bucket info in state without changing active bucket during render
       setBucketInfos(prev => {
         const updatedInfos = {
           ...prev,
           [bucketName]: bucketInfo
         };
-        
-        // Check if this is the current active bucket and it's now offline or doesn't have a table
-        if (bucketName === activeBucket && (bucketInfo.status !== 'online' || !bucketInfo.hasTable)) {
-          console.log(`Active bucket ${bucketName} is now ${bucketInfo.status} or doesn't have a table (hasTable: ${bucketInfo.hasTable})`);
-          
-          // Find the next available bucket that's online and has a table
-          const availableBuckets = Object.entries(updatedInfos)
-            .filter(([name, info]) => 
-              name !== '_internal' && 
-              info.status === 'online' && 
-              info.hasTable
-            )
-            .map(([name]) => name);
-          
-          if (availableBuckets.length > 0) {
-            const nextBucket = availableBuckets[0];
-            console.log(`Setting active bucket to next available: ${nextBucket}`);
-            setActiveBucket(nextBucket);
-          } else {
-            console.log('No available buckets found, setting active bucket to null');
-            setActiveBucket(null);
-          }
-        }
-        
-        // If no active bucket is set yet and this bucket is online and has a table,
-        // set this as the active bucket
-        if (activeBucket === null && bucketInfo.status === 'online' && bucketInfo.hasTable) {
-          console.log(`Setting active bucket to ${bucketName} (status: ${bucketInfo.status}, hasTable: ${bucketInfo.hasTable})`);
-          setActiveBucket(bucketName);
-        }
-        
         return updatedInfos;
       });
     } catch (err) {
@@ -129,29 +147,10 @@ export default function BucketsPage() {
         }
       }));
       
-      // If this was the active bucket, check if we need to change it
-      if (bucketName === activeBucket) {
-        console.log(`Active bucket ${bucketName} is now offline due to error`);
-        
-        // Find another bucket that's online and has a table
-        const availableBuckets = Object.entries(bucketInfos)
-          .filter(([name, info]) => 
-            name !== '_internal' && 
-            name !== bucketName && 
-            info.status === 'online' && 
-            info.hasTable
-          )
-          .map(([name]) => name);
-        
-        if (availableBuckets.length > 0) {
-          const nextBucket = availableBuckets[0];
-          console.log(`Setting active bucket to next available: ${nextBucket}`);
-          setActiveBucket(nextBucket);
-        } else {
-          console.log('No available buckets found, setting active bucket to null');
-          setActiveBucket(null);
-        }
-      }
+      // The active bucket changes will be handled by the useEffect hook
+      // that watches bucketInfos changes
+      console.log(`Bucket ${bucketName} is now marked as offline due to error`);
+      // No direct setActiveBucket calls here to avoid React state updates during render
     }
   };
 
