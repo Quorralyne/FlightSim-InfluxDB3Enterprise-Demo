@@ -316,19 +316,59 @@ export default function CockpitPage() {
               <div className={styles.cardContent}>
                 <div className={styles.attitudeContainer}>
                   {(() => {
-                    const bankAngle = measurements.find(m => m.metric === 'flight_bank')?.value || 0;
+                    // Get bank angle value and invert it (multiply by -1) so positive values indicate left bank
+                    const bankAngleRaw = measurements.find(m => m.metric === 'flight_bank')?.value || 0;
+                    const bankAngle = -bankAngleRaw; // Invert the angle
                     const bankAngleStyle = {
                       transform: `rotate(${bankAngle}deg)`,
                       transition: 'transform 0.2s ease-out'
                     };
 
+                    // Create bank angle markers at 0, 10, 20, and 30 degrees (both left and right)
+                    const bankMarkers: React.ReactNode[] = [];
+                    const markerAngles = [0, 10, 20, 30, -10, -20, -30];
+
+                    markerAngles.forEach(angle => {
+                      const isZero = angle === 0;
+                      const markerStyle = {
+                        transform: `rotate(${angle}deg)`
+                      };
+
+                      const labelStyle = {
+                        transform: `rotate(${-angle}deg)`
+                      };
+
+                      bankMarkers.push(
+                        <div
+                          key={`marker-${angle}`}
+                          className={`${styles.marker} ${isZero ? styles.markerZero : ''}`}
+                          style={markerStyle}
+                        >
+                          {(angle === 0 || Math.abs(angle) === 30) && (
+                            <div className={styles.markerLabel} style={labelStyle}>
+                              {Math.abs(angle)}°
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+
                     return (
                       <div className={styles.attitudeIndicator}>
-                        <div className={styles.bankIndicator} style={bankAngleStyle}>
+                        <div className={styles.bankIndicator}>
+                          {/* Fixed elements */}
                           <div className={styles.horizonLine}></div>
-                          <div className={styles.planeBody}></div>
-                          <div className={styles.planeWings}></div>
-                          <div className={styles.planeTail}></div>
+                          <div className={styles.bankMarkers}>
+                            {bankMarkers}
+                          </div>
+                          
+                          {/* Rotating plane container */}
+                          <div className={styles.planeContainer} style={bankAngleStyle}>
+                            <div className={styles.bankPointer}></div>
+                            <div className={styles.planeBody}></div>
+                            <div className={styles.planeWings}></div>
+                            <div className={styles.planeTail}></div>
+                          </div>
                         </div>
                         <div className={styles.attitudeValue}>{bankAngle.toFixed(1)}°</div>
                       </div>
@@ -336,7 +376,7 @@ export default function CockpitPage() {
                   })()}
                 </div>
                 <div className={styles.statLabel}>
-                  Positive values indicate right bank
+                  Positive values indicate left bank
                 </div>
               </div>
             </div>

@@ -127,11 +127,16 @@
   background-color: #f0f8ff;
 }
 
-.pitchLine {
+.bankIndicator .planeContainer {
   position: absolute;
-  width: 120px;
-  height: 4px;
-  background-color: #3182ce;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  top: 0;
+  left: 0;
+  z-index: 2;
 }
 
 .pitchArrow {
@@ -147,28 +152,30 @@
 /* Plane view from behind for bank indicator */
 .bankIndicator .planeBody {
   position: absolute;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 30px;
   background-color: #333;
-  border-radius: 50%;
+  border-radius: 50% 50% 20% 20%;
   z-index: 2;
 }
 
 .bankIndicator .planeWings {
   position: absolute;
   width: 100px;
-  height: 6px;
+  height: 8px;
   background-color: #3182ce;
+  border-radius: 4px;
   z-index: 1;
 }
 
 .bankIndicator .planeTail {
   position: absolute;
-  width: 6px;
-  height: 15px;
+  width: 8px;
+  height: 20px;
   background-color: #3182ce;
-  bottom: 0;
-  z-index: 1;
+  border-radius: 2px 2px 0 0;
+  margin-bottom: 48px;
+  z-index: 10;
 }
 
 /* Horizon line */
@@ -178,6 +185,57 @@
   height: 2px;
   background-color: #666;
   z-index: 0;
+}
+
+/* Bank angle markers */
+.bankIndicator .bankMarkers {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.bankIndicator .marker {
+  position: absolute;
+  width: 2px;
+  height: 10px;
+  background-color: #333;
+  top: 5px;
+  left: 72px; /* Half of the width of bankMarkers */
+  transform-origin: center 70px; /* This puts the rotation origin at the center of the circle */
+}
+
+.bankIndicator .markerZero {
+  height: 15px;
+  width: 3px;
+}
+
+.bankIndicator .markerLabel {
+  position: absolute;
+  font-size: 10px;
+  color: #333;
+  top: -18px;
+  left: 0;
+  transform: translateX(-50%);
+  font-weight: bold;
+}
+
+/* Bank angle pointer */
+.bankIndicator .bankPointer {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 12px solid #e53e3e;
+  top: 0;
+  left: 74px;
+  transform: translateX(-50%);
+  z-index: 3;
 }
 
 .pitchIndicator .pitchLine {
