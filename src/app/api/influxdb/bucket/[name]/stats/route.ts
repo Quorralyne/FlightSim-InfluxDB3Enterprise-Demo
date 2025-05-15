@@ -9,7 +9,8 @@ export async function GET(
   const { name: bucketName } = await context.params;
 
   let stats = {
-    measurementsLastMinute: 0,
+    recordCount: 0,
+    measurementCountPerRecord: 0,
     dbSizeData: [],
     compactedSizeData: [],
     lastUpdated: new Date().toISOString()
@@ -37,7 +38,7 @@ export async function GET(
     }
 
     // Count the number of records in the last minute
-    const response = await fetch(`${endpointUrl}api/v3/query_sql`, {
+    const recordCountResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -46,13 +47,33 @@ export async function GET(
       },
       body: JSON.stringify({
         db: bucketName,
-        q: `SELECT COUNT(*) AS count FROM mqtt_consumer WHERE time >= now() - INTERVAL '1 minute'`
+        q: `SELECT COUNT(*) AS count FROM flight_data WHERE time >= now() - INTERVAL '1 minute'`
       })
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      stats.measurementsLastMinute = data[0].count;
+    if (recordCountResponse.ok) {
+      const data = await recordCountResponse.json();
+      stats.recordCount = data[0].count;
+    }
+
+    // Count the number of measurements in a record
+    const measurementCountResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${config.adminToken}`
+      },
+      body: JSON.stringify({
+        db: bucketName,
+        q: `SELECT * FROM flight_data WHERE time >= now() - INTERVAL '1 minute' LIMIT 1`
+      })
+    });
+
+    if (measurementCountResponse.ok) {
+      const data = await measurementCountResponse.json();
+      // count the keys starting with "fields_"
+      stats.measurementCountPerRecord = Object.keys(data[0]).filter(key => key.startsWith('fields_')).length;
     }
 
     // Count the number of records in the last minute

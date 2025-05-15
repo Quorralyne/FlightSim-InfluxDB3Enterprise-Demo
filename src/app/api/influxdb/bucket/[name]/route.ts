@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { name: string } }
 ) {
 
-  const tableName = "mqtt_consumer";
+  const tableName = "flight_data";
   let bucketInfo = {
     status: "offline",
     hasTable: false

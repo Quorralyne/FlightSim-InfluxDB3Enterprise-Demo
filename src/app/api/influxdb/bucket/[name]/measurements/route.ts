@@ -8,8 +8,7 @@ export async function GET(
 ) {
   const { name: bucketName } = await context.params;
   const searchParams = request.nextUrl.searchParams;
-  const limit = parseInt(searchParams.get('limit') || '50', 10);
-
+  
   try {
     // Get configuration
     const config = await readConfig();
@@ -31,8 +30,8 @@ export async function GET(
       );
     }
 
-    // Get the last 200 measurements
-    const sizeDataResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
+    // Get the last measurements within the time window
+    const dataResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -41,68 +40,31 @@ export async function GET(
       },
       body: JSON.stringify({
         db: bucketName,
-        q: `SELECT * FROM mqtt_consumer WHERE time >= now() - INTERVAL '1 minute' ORDER BY time DESC LIMIT ${limit}`
+        q: `SELECT * FROM flight_data WHERE time >= now() - INTERVAL '1 minute' ORDER BY time DESC LIMIT 20`
       })
     });
 
-    const measurements = [];
-    if (sizeDataResponse.ok) {
-      const data = await sizeDataResponse.json();
-
-      measurements.push(...data.map((item: any) => ({
-        metric: item.topic.replace('msfs/', ''),
-        value: item.value,
-        timestamp: item.time,
-        unit: item.unit
-      })));
+    let records = [];
+    let totalMeasurements = 0;
+    
+    if (dataResponse.ok) {
+      records = await dataResponse.json();
     }
 
     return NextResponse.json({
       success: true,
       bucketName,
-      measurements,
+      records,
       lastUpdated: new Date().toISOString()
     });
   } catch (error) {
-    console.error(`Error fetching measurements for bucket ${bucketName}:`, error);
+    console.error(`Error fetching flight data records for bucket ${bucketName}:`, error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch measurements',
+        error: error instanceof Error ? error.message : 'Failed to fetch flight data records',
       },
       { status: 500 }
     );
-  }
-}
-
-// Helper function to get the appropriate unit for a metric
-function getUnitForMetric(metricName: string): string {
-  switch (metricName) {
-    case 'altitude':
-      return 'ft';
-    case 'airspeed':
-      return 'knots';
-    case 'heading':
-    case 'wind_direction':
-      return '°';
-    case 'pitch':
-    case 'roll':
-      return '°';
-    case 'vertical_speed':
-      return 'ft/min';
-    case 'fuel_level':
-      return '%';
-    case 'engine_temperature':
-    case 'outside_temperature':
-      return '°C';
-    case 'oil_pressure':
-      return 'PSI';
-    case 'wind_speed':
-      return 'knots';
-    case 'latitude':
-    case 'longitude':
-      return '°';
-    default:
-      return '';
   }
 }
