@@ -23,46 +23,6 @@ if (globalMonitorState.intervalId) {
     globalMonitorState.isActive = false;
 }
 
-// Function to find database directories that match a pattern
-function findMatchingDirectory(basePath: string, pattern: string): string | null {
-    try {
-        // Check if base path exists
-        if (!fs.existsSync(basePath)) {
-            console.error(`Base path does not exist: ${basePath}`);
-            return null;
-        }
-
-        // Get all directories in the base path
-        const entries = fs.readdirSync(basePath, { withFileTypes: true });
-
-        // Filter for directories that match the pattern
-        const matchingDirs = entries
-            .filter(entry => entry.isDirectory())
-            .filter(entry => {
-                const regex = new RegExp(pattern);
-                return regex.test(entry.name);
-            })
-            .map(entry => entry.name);
-
-        // Sort by recency (assuming newer databases have higher numbers)
-        matchingDirs.sort((a, b) => {
-            const numA = parseInt(a.match(/\d+/)?.[0] || '0');
-            const numB = parseInt(b.match(/\d+/)?.[0] || '0');
-            return numB - numA; // Descending order to get newest first
-        });
-
-        // Return the first (most recent) match or null if none found
-        if (matchingDirs.length > 0) {
-            console.log(`[DirSizeMonitor] Found matching directory: ${matchingDirs[0]}`);
-            return path.join(basePath, matchingDirs[0]);
-        }
-        return null;
-    } catch (error) {
-        console.error(`Error finding matching directory in ${basePath}:`, error);
-        return null;
-    }
-}
-
 // Function to calculate directory size recursively
 function calculateDirSize(dirPath: string): number {
     let totalSize = 0;
@@ -135,44 +95,20 @@ async function collectAndSendData() {
             return;
         }
 
-        let dbDirectory = null;
-        let compactedDirectory = null;
+        let dbDirectory = config.dataPath;
 
-        const bucketName = config.activeBucket || 'flightsim';
-        const dbsPath = path.join(config.dataPath, bucketName, 'c');
-        const compactedPath = path.join(config.dataPath, bucketName, 'dbs');
-
-        if (fs.existsSync(dbsPath)) {
-            dbDirectory = dbsPath;
-        }
-
-        if (fs.existsSync(compactedPath)) {
-            compactedDirectory = findMatchingDirectory(compactedPath, 'flightsim-\\d+');
-        }
-
-        if (!dbDirectory) {
+        if (!fs.existsSync(dbDirectory)) {
             console.error('[DirSizeMonitor] Could not find DB directory');
-            console.error(`[DirSizeMonitor] Checked path: ${dbsPath}`);
-            return;
-        }
-
-        if (!compactedDirectory) {
-            console.error('[DirSizeMonitor] Could not find compacted directory');
-            console.error(`[DirSizeMonitor] Checked path: ${compactedPath}`);
             return;
         }
 
         console.log(`[DirSizeMonitor] Calculating size for DB directory: ${dbDirectory}`);
         const dbSize = calculateDirSize(dbDirectory);
 
-        console.log(`[DirSizeMonitor] Calculating size for compacted directory: ${compactedDirectory}`);
-        const compactedSize = calculateDirSize(compactedDirectory);
-
         const timestamp = Date.now() * 1000000;
 
         const data = [
             `directory_stats,folder=db_size directory_size_bytes=${dbSize} ${timestamp}`,
-            `directory_stats,folder=compacted_size directory_size_bytes=${compactedSize} ${timestamp}`
         ].join('\n');
 
         console.log('[DirSizeMonitor] Data to send:', data);

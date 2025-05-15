@@ -83,43 +83,40 @@ export async function GET(
     } catch (err) {
       console.error('Error fetching measurement count:', err);
     }
-    // // Count the number of records in the last minute
-    // const sizeDataResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Accept': 'application/json',
-    //     'Authorization': `Bearer ${config.adminToken}`
-    //   },
-    //   body: JSON.stringify({
-    //     db: bucketName,
-    //     q: `SELECT * FROM directory_stats WHERE time >= now() - INTERVAL '5 minute'`
-    //   })
-    // });
 
-    // if (sizeDataResponse.ok) {
-    //   const data = await sizeDataResponse.json();
-    //   // data looks like this:
-    //   // [{
-    //   //   directory_size_bytes: 161574683,
-    //   //   folder: 'db_size',
-    //   //   time: '2025-05-07T06:03:10.474'
-    //   // }]
+    // Count the number of records in the last hour
+    const sizeDataResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${config.adminToken}`
+      },
+      body: JSON.stringify({
+        db: bucketName,
+        q: `SELECT * FROM directory_stats WHERE time >= now() - INTERVAL '1 hour'`
+      })
+    });
 
-    //   // Convert data to the format we need
-    //   // [{
-    //   //   timestamp: '2025-05-07T06:03:10.474',
-    //   //   value: 161574683
-    //   // }]
-    //   stats.dbSizeData = data.filter((item: any) => item.folder === 'db_size').map((item: any) => ({
-    //     timestamp: item.time,
-    //     value: item.directory_size_bytes
-    //   }));
-    //   stats.compactedSizeData = data.filter((item: any) => item.folder === 'compacted_size').map((item: any) => ({
-    //     timestamp: item.time,
-    //     value: item.directory_size_bytes
-    //   }));
-    // }
+    if (sizeDataResponse.ok) {
+      const data = await sizeDataResponse.json();
+      // data looks like this:
+      // [{
+      //   directory_size_bytes: 161574683,
+      //   folder: 'db_size',
+      //   time: '2025-05-07T06:03:10.474'
+      // }]
+
+      // Convert data to the format we need
+      // [{
+      //   timestamp: '2025-05-07T06:03:10.474',
+      //   value: 161574683
+      // }]
+      stats.dbSizeData = data.filter((item: any) => item.folder === 'db_size').map((item: any) => ({
+        timestamp: item.time,
+        value: item.directory_size_bytes
+      }));
+    }
 
     return NextResponse.json({
       success: true,

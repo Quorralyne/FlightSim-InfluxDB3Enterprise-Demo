@@ -26,7 +26,6 @@ interface BucketStats {
   recordCount: number;
   measurementCountPerRecord: number;
   dbSizeData: DataPoint[];
-  compactedSizeData: DataPoint[];
 }
 
 export default function DataPage() {
@@ -38,7 +37,6 @@ export default function DataPage() {
 
   // Refs for canvas elements
   const dbSizeCanvasRef = useRef<HTMLCanvasElement>(null);
-  const compactedSizeCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Function to fetch data
   const fetchData = async () => {
@@ -113,9 +111,6 @@ export default function DataPage() {
     const minValue = Math.min(...values) * 0.9 / 1024 / 1024;
     const maxValue = Math.max(...values) * 1.1 / 1024 / 1024;
 
-    console.log('Min value:', minValue);
-    console.log('Max value:', maxValue);
-
     // Draw axes
     ctx.beginPath();
     ctx.strokeStyle = '#ccc';
@@ -161,89 +156,7 @@ export default function DataPage() {
 
       // Draw y-axis labels
       ctx.fillStyle = '#666';
-      ctx.font = '14px Arial';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-
-      // Min value
-      ctx.fillText(minValue.toFixed(2), padding - 5, height - padding);
-
-      // Max value
-      ctx.fillText(maxValue.toFixed(2), padding - 5, padding);
-
-      // Middle value
-      const middleValue = (minValue + maxValue) / 2;
-      ctx.fillText(middleValue.toFixed(2), padding - 5, height - padding - (height - 2 * padding) / 2);
-    }
-  };
-
-  // Function to draw the compacted size graph
-  const drawCompactedSizeGraph = () => {
-    if (!compactedSizeCanvasRef.current || !stats?.compactedSizeData) return;
-
-    const canvas = compactedSizeCanvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const data = stats.compactedSizeData;
-    const width = canvas.width;
-    const height = canvas.height;
-    const padding = 45;
-
-    // Find min and max values
-    const values = data.map(d => d.value);
-    const minValue = Math.min(...values) * 0.9 / 1024 / 1024;
-    const maxValue = Math.max(...values) * 1.1 / 1024 / 1024;
-
-    // Draw axes
-    ctx.beginPath();
-    ctx.strokeStyle = '#ccc';
-    ctx.moveTo(padding, padding);
-    ctx.lineTo(padding, height - padding);
-    ctx.lineTo(width - padding, height - padding);
-    ctx.stroke();
-
-    // Draw data points
-    if (data.length > 1) {
-      const xStep = (width - 2 * padding) / (data.length - 1);
-
-      // Draw line
-      ctx.beginPath();
-      ctx.strokeStyle = '#38a169';
-      ctx.lineWidth = 2;
-
-      data.forEach((point, i) => {
-        const value = point.value / 1024 / 1024;
-        const x = padding + i * xStep;
-        const y = height - padding - ((value - minValue) / (maxValue - minValue)) * (height - 2 * padding);
-
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
-
-      ctx.stroke();
-
-      // Draw points
-      data.forEach((point, i) => {
-        const value = point.value / 1024 / 1024;
-        const x = padding + i * xStep;
-        const y = height - padding - ((value - minValue) / (maxValue - minValue)) * (height - 2 * padding);
-
-        ctx.beginPath();
-        ctx.fillStyle = '#38a169';
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Draw y-axis labels
-      ctx.fillStyle = '#666';
-      ctx.font = '14px Arial';
+      ctx.font = '12px Arial';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
 
@@ -263,7 +176,6 @@ export default function DataPage() {
   useEffect(() => {
     if (stats) {
       drawDbSizeGraph();
-      drawCompactedSizeGraph();
     }
   }, [stats]);
 
@@ -367,26 +279,6 @@ export default function DataPage() {
                 <div className={styles.graphContainer}>
                   <canvas
                     ref={dbSizeCanvasRef}
-                    width="500"
-                    height="200"
-                    style={{ width: '100%', height: '100%' }}
-                  ></canvas>
-                </div>
-                <div className={styles.statLabel}>
-                  Last hour (10s intervals)
-                </div>
-              </div>
-            </div>
-
-            {/* Compacted size graph */}
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <h3 className={styles.cardTitle}>Compacted Size (MB)</h3>
-              </div>
-              <div className={styles.cardContent}>
-                <div className={styles.graphContainer}>
-                  <canvas
-                    ref={compactedSizeCanvasRef}
                     width="500"
                     height="200"
                     style={{ width: '100%', height: '100%' }}

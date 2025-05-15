@@ -5,18 +5,12 @@ import { useConfig } from '@/contexts/ConfigContext';
 import AppLayout from '../app-layout';
 import styles from './cockpit.module.css';
 
-// Types for our data
-interface DataPoint {
-  timestamp: string;
-  value: number;
-}
-
 // Interface for the consolidated flight data format
 interface FlightDataRecord {
   time: string;
   topic: string;
   host: string;
-  [key: string]: any; // For all the fields_* properties
+  [key: string]: any;
 }
 
 export default function CockpitPage() {
@@ -41,7 +35,6 @@ export default function CockpitPage() {
 
       // Set up polling interval (every 0.5 seconds for cockpit data)
       const interval = setInterval(() => {
-        // Use a more controlled approach to fetch data
         (async () => {
           try {
             fetch(`/api/influxdb/bucket/${encodeURIComponent(activeBucket)}/measurements?limit=1`, {
@@ -56,15 +49,6 @@ export default function CockpitPage() {
                 const data = await response.json();
                 if (data.success) {
                   setRecords(data.records);
-
-                  // Extract unique metrics from the fields_* properties
-                  if (data.records.length > 0) {
-                    const firstRecord = data.records[0];
-                    const metrics = Object.keys(firstRecord)
-                      .filter(key => key.startsWith('fields_'))
-                      .map(key => key.replace('fields_', ''));
-
-                  }
                 }
               }
             });
@@ -80,12 +64,6 @@ export default function CockpitPage() {
       };
     }
   }, [activeBucket]);
-
-  // Format timestamp for display in UTC Zulu time with milliseconds
-  const formatTimestamp = (timestamp: string) => {
-    // Return the ISO string which is already in UTC Zulu time with milliseconds
-    return timestamp;
-  };
 
   // Only show the "select a bucket" message if loading is complete and there's no active bucket
   if (!activeBucket) {
@@ -106,7 +84,6 @@ export default function CockpitPage() {
         </div>
 
         <div className={styles.dashboardGrid}>
-          {/* Indicators Row - 6 flight data indicators */}
           <div className={styles.indicatorsRow}>
             {/* Indicator 1 - True Air Speed */}
             <div className={styles.indicator}>
@@ -170,7 +147,8 @@ export default function CockpitPage() {
               return (
                 <div className={styles.indicator}>
                   <div className={styles.indicatorValue} style={{ color: apOn ? 'green' : 'inherit' }}>
-                    {apHeading !== null ? apHeading.toFixed(0) : '---'}
+                    {/* this value can be negative - if so, add 360 */}
+                    {apHeading !== null ? (apHeading < 0 ? apHeading + 360 : apHeading).toFixed(0) : '---'}
                   </div>
                   <div className={styles.indicatorLabel}>
                     AP HDG (°)
