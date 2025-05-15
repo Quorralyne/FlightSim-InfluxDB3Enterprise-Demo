@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Notice from '@/components/ui/Notice';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
-import { TrashIcon, RefreshIcon, BucketIcon, TicketIcon, LinkIcon } from '@/components/ui/icons/Icons';
+import { TrashIcon, RefreshIcon, BucketIcon, TokenIcon, LinkIcon } from '@/components/ui/icons/Icons';
 import TokenModal from '@/components/buckets/TokenModal';
 import CreateBucketForm from '@/components/buckets/CreateBucketForm';
 import styles from './buckets.module.css';
@@ -272,7 +272,7 @@ export default function BucketsPage() {
     <AppLayout>
       <div className={styles.tabContent}>
         <div className={styles.header}>
-          <h2>Databases</h2>
+          <h2>Buckets</h2>
           <div className={styles.headerButtons}>
             <Button onClick={openModal}>
               Create Bucket <BucketIcon size={16} className={styles.buttonIcon} />
@@ -329,7 +329,7 @@ export default function BucketsPage() {
                       className={styles.actionButton}
                       aria-label="Generate token for database"
                     >
-                      <TicketIcon size={16} />
+                      <TokenIcon size={16} />
                     </Button>
                     <Button
                       variant="outline"

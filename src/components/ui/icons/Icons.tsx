@@ -148,7 +148,7 @@ export function SuccessIcon({ className = '', size = 20 }: IconProps) {
   );
 }
 
-export function TicketIcon({ className = '', size = 20 }: IconProps) {
+export function TokenIcon({ className = '', size = 20 }: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -162,13 +162,9 @@ export function TicketIcon({ className = '', size = 20 }: IconProps) {
       strokeLinejoin="round"
       className={className}
     >
-      <rect x="2" y="6" width="20" height="12" rx="2" />
-      <path d="M16 6v12" strokeDasharray="1 2" />
-      <circle cx="16" cy="9" r="0.5" fill="currentColor" />
-      <circle cx="16" cy="12" r="0.5" fill="currentColor" />
-      <circle cx="16" cy="15" r="0.5" fill="currentColor" />
-      <path d="M8 10h4" />
-      <path d="M7 14h6" />
+      <path d="M7 6L1 12l6 6" />
+      <path d="M17 6l6 6-6 6" />
+      <path d="M14 8L10 16" />
     </svg>
   );
 }
