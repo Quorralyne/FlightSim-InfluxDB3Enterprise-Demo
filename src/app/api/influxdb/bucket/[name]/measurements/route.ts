@@ -8,6 +8,7 @@ export async function GET(
 ) {
   const { name: bucketName } = await context.params;
   const searchParams = request.nextUrl.searchParams;
+  const limit = searchParams.get('limit') || '20';
   
   try {
     // Get configuration
@@ -30,7 +31,7 @@ export async function GET(
       );
     }
 
-    // Get the last measurements within the time window
+    // Get the most recent $limit measurements within the last minute
     const dataResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
       method: 'POST',
       headers: {
@@ -40,15 +41,22 @@ export async function GET(
       },
       body: JSON.stringify({
         db: bucketName,
-        q: `SELECT * FROM flight_data WHERE time >= now() - INTERVAL '1 minute' ORDER BY time DESC LIMIT 20`
+        q: `SELECT * FROM flight_data WHERE time >= now() - INTERVAL '1 minute' ORDER BY time DESC LIMIT ${limit}`
       })
     });
 
     let records = [];
-    let totalMeasurements = 0;
     
     if (dataResponse.ok) {
-      records = await dataResponse.json();
+      try {
+        const responseData = await dataResponse.json();
+        // Make sure we always return an array, even if empty
+        records = Array.isArray(responseData) ? responseData : [];
+      } catch (err) {
+        console.error('Error parsing response data:', err);
+        // Return empty array if parsing fails
+        records = [];
+      }
     }
 
     return NextResponse.json({

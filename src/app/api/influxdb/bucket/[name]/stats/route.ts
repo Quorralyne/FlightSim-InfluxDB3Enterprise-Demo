@@ -38,81 +38,88 @@ export async function GET(
     }
 
     // Count the number of records in the last minute
-    const recordCountResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${config.adminToken}`
-      },
-      body: JSON.stringify({
-        db: bucketName,
-        q: `SELECT COUNT(*) AS count FROM flight_data WHERE time >= now() - INTERVAL '1 minute'`
-      })
-    });
+    try {
+      const recordCountResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${config.adminToken}`
+        },
+        body: JSON.stringify({
+          db: bucketName,
+          q: `SELECT COUNT(*) AS count FROM flight_data WHERE time >= now() - INTERVAL '1 minute'`
+        })
+      });
 
-    if (recordCountResponse.ok) {
-      const data = await recordCountResponse.json();
-      stats.recordCount = data[0].count;
+      if (recordCountResponse.ok) {
+        const data = await recordCountResponse.json();
+        stats.recordCount = data[0].count;
+      }
+    } catch (err) {
+      console.error('Error fetching record count:', err);
     }
 
     // Count the number of measurements in a record
-    const measurementCountResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${config.adminToken}`
-      },
-      body: JSON.stringify({
-        db: bucketName,
-        q: `SELECT * FROM flight_data WHERE time >= now() - INTERVAL '1 minute' LIMIT 1`
-      })
-    });
+    try {
+      const measurementCountResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${config.adminToken}`
+        },
+        body: JSON.stringify({
+          db: bucketName,
+          q: `SELECT * FROM flight_data WHERE time >= now() - INTERVAL '1 minute' LIMIT 1`
+        })
+      });
 
-    if (measurementCountResponse.ok) {
-      const data = await measurementCountResponse.json();
-      // count the keys starting with "fields_"
-      stats.measurementCountPerRecord = Object.keys(data[0]).filter(key => key.startsWith('fields_')).length;
+      if (measurementCountResponse.ok) {
+        const data = await measurementCountResponse.json();
+        // count the keys starting with "fields_"
+        stats.measurementCountPerRecord = Object.keys(data[0]).filter(key => key.startsWith('fields_')).length;
+      }
+    } catch (err) {
+      console.error('Error fetching measurement count:', err);
     }
+    // // Count the number of records in the last minute
+    // const sizeDataResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
+    //   method: 'POST',
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //     'Accept': 'application/json',
+    //     'Authorization': `Bearer ${config.adminToken}`
+    //   },
+    //   body: JSON.stringify({
+    //     db: bucketName,
+    //     q: `SELECT * FROM directory_stats WHERE time >= now() - INTERVAL '5 minute'`
+    //   })
+    // });
 
-    // Count the number of records in the last minute
-    const sizeDataResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${config.adminToken}`
-      },
-      body: JSON.stringify({
-        db: bucketName,
-        q: `SELECT * FROM directory_stats WHERE time >= now() - INTERVAL '5 minute'`
-      })
-    });
+    // if (sizeDataResponse.ok) {
+    //   const data = await sizeDataResponse.json();
+    //   // data looks like this:
+    //   // [{
+    //   //   directory_size_bytes: 161574683,
+    //   //   folder: 'db_size',
+    //   //   time: '2025-05-07T06:03:10.474'
+    //   // }]
 
-    if (sizeDataResponse.ok) {
-      const data = await sizeDataResponse.json();
-      // data looks like this:
-      // [{
-      //   directory_size_bytes: 161574683,
-      //   folder: 'db_size',
-      //   time: '2025-05-07T06:03:10.474'
-      // }]
-      
-      // Convert data to the format we need
-      // [{
-      //   timestamp: '2025-05-07T06:03:10.474',
-      //   value: 161574683
-      // }]
-      stats.dbSizeData = data.filter((item: any) => item.folder === 'db_size').map((item: any) => ({
-        timestamp: item.time,
-        value: item.directory_size_bytes
-      }));
-      stats.compactedSizeData = data.filter((item: any) => item.folder === 'compacted_size').map((item: any) => ({
-        timestamp: item.time,
-        value: item.directory_size_bytes
-      }));
-    }
+    //   // Convert data to the format we need
+    //   // [{
+    //   //   timestamp: '2025-05-07T06:03:10.474',
+    //   //   value: 161574683
+    //   // }]
+    //   stats.dbSizeData = data.filter((item: any) => item.folder === 'db_size').map((item: any) => ({
+    //     timestamp: item.time,
+    //     value: item.directory_size_bytes
+    //   }));
+    //   stats.compactedSizeData = data.filter((item: any) => item.folder === 'compacted_size').map((item: any) => ({
+    //     timestamp: item.time,
+    //     value: item.directory_size_bytes
+    //   }));
+    // }
 
     return NextResponse.json({
       success: true,

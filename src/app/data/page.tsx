@@ -19,7 +19,7 @@ interface FlightDataPoint {
   time: string;
   topic: string;
   host: string;
-  [key: string]: any; // For all the fields_* properties
+  [key: string]: any;
 }
 
 interface BucketStats {
@@ -27,15 +27,12 @@ interface BucketStats {
   measurementCountPerRecord: number;
   dbSizeData: DataPoint[];
   compactedSizeData: DataPoint[];
-  lastUpdated: string;
 }
 
 export default function DataPage() {
-  const { activeBucket, isLoading } = useConfig();
-  const [error, setError] = useState<string | null>(null);
+  const { activeBucket } = useConfig();
   const [stats, setStats] = useState<BucketStats | null>(null);
   const [records, setRecords] = useState<FlightDataPoint[]>([]);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [metricFilter, setMetricFilter] = useState<string>('all');
   const [availableMetrics, setAvailableMetrics] = useState<string[]>([]);
 
@@ -47,8 +44,6 @@ export default function DataPage() {
   const fetchData = async () => {
     if (!activeBucket) return;
 
-    setError(null);
-
     try {
       // Fetch stats with cache control headers
       fetch(`/api/influxdb/bucket/${encodeURIComponent(activeBucket)}/stats`, {
@@ -58,52 +53,42 @@ export default function DataPage() {
           'Expires': '0'
         }
       }).then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Failed to fetch stats: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        if (data.success) {
-          setStats(data.stats);
-        } else {
-          throw new Error(data.error || 'Failed to fetch stats');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setStats(data.stats);
+          }
         }
       });
 
       // Fetch measurements with cache control headers
-      fetch(`/api/influxdb/bucket/${encodeURIComponent(activeBucket)}/measurements?limit=1000`, {
+      fetch(`/api/influxdb/bucket/${encodeURIComponent(activeBucket)}/measurements?limit=10`, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
         }
       }).then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Failed to fetch measurements: ${response.statusText}`);
-        }
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setRecords(data.records);
 
-        const data = await response.json();
-        if (data.success) {
-          setRecords(data.records);
-          setLastUpdated(data.lastUpdated);
+            // Extract unique metrics from the fields_* properties
+            if (data.records.length > 0) {
+              const firstRecord = data.records[0];
+              const metrics = Object.keys(firstRecord)
+                .filter(key => key.startsWith('fields_'))
+                .map(key => key.replace('fields_', ''));
 
-          // Extract unique metrics from the fields_* properties
-          if (data.records.length > 0) {
-            const firstRecord = data.records[0];
-            const metrics = Object.keys(firstRecord)
-              .filter(key => key.startsWith('fields_'))
-              .map(key => key.replace('fields_', ''));
-
-            setAvailableMetrics(metrics.sort());
+              setAvailableMetrics(metrics.sort());
+            }
           }
-        } else {
-          throw new Error(data.error || 'Failed to fetch flight data records');
         }
       });
 
     } catch (err) {
       console.error('Error fetching data:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
     }
   };
 
@@ -288,60 +273,9 @@ export default function DataPage() {
       // Initial data fetch
       fetchData();
 
-      // Set up polling interval (every 10 seconds)
+      // Set up polling interval (every 1 second)
       const interval = setInterval(() => {
-        // Use a more controlled approach to fetch data
-        (async () => {
-          try {
-            // Fetch stats
-            fetch(`/api/influxdb/bucket/${encodeURIComponent(activeBucket)}/stats`, {
-              // Add cache control headers to prevent caching
-              headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-              }
-            }).then(async (response) => {
-              if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                  setStats(data.stats);
-                }
-              }
-            });
-
-            // Fetch measurements
-            fetch(`/api/influxdb/bucket/${encodeURIComponent(activeBucket)}/measurements`, {
-              // Add cache control headers to prevent caching
-              headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-              }
-            }).then(async (response) => {
-              if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                  setRecords(data.records);
-                  setLastUpdated(data.lastUpdated);
-
-                  // Extract unique metrics from the fields_* properties
-                  if (data.records.length > 0) {
-                    const firstRecord = data.records[0];
-                    const metrics = Object.keys(firstRecord)
-                      .filter(key => key.startsWith('fields_'))
-                      .map(key => key.replace('fields_', ''));
-
-                    setAvailableMetrics(metrics.sort());
-                  }
-                }
-              }
-            });
-
-          } catch (err) {
-            console.error('Error in auto-refresh:', err);
-          }
-        })();
+        fetchData();
       }, 1000);
 
       return () => {
@@ -387,70 +321,31 @@ export default function DataPage() {
           </Button>
         </div>
 
-        {error && (
-          <Notice type="error">
-            {error}
-          </Notice>
-        )}
-
         <div className={styles.dashboardGrid}>
           {/* Indicators Row - 6 small measurement cards */}
           <div className={styles.indicatorsRow}>
             {/* Indicator 1 - Measurements per minute */}
             <div className={styles.indicator}>
               <div className={styles.indicatorValue}>
-                {stats?.recordCount * stats?.measurementCountPerRecord || 0}
+                {/* format number with thousands separator*/}
+                {((stats?.recordCount || 0) * (stats?.measurementCountPerRecord || 0)).toLocaleString()}
               </div>
               <div className={styles.indicatorLabel}>
-                Record Count
+                Data Points
               </div>
             </div>
 
-            {/* Indicator 2 - Current DB Size */}
+            {/* Indicator 2 - Metrics Count */}
             <div className={styles.indicator}>
               <div className={styles.indicatorValue}>
-                {stats?.dbSizeData && stats.dbSizeData.length > 0
-                  ? (stats.dbSizeData[stats.dbSizeData.length - 1].value / 1024 / 1024).toFixed(2)
-                  : '0.00'}
+                {stats?.measurementCountPerRecord}
               </div>
               <div className={styles.indicatorLabel}>
-                Current DB Size (MB)
+                Unique Measurements
               </div>
             </div>
 
-            {/* Indicator 3 - Current Compacted Size */}
-            <div className={styles.indicator}>
-              <div className={styles.indicatorValue}>
-                {stats?.compactedSizeData && stats.compactedSizeData.length > 0
-                  ? (stats.compactedSizeData[stats.compactedSizeData.length - 1].value / 1024 / 1024).toFixed(2)
-                  : '0.00'}
-              </div>
-              <div className={styles.indicatorLabel}>
-                Compacted Size (MB)
-              </div>
-            </div>
-
-            {/* Indicator 4 - Metrics Count */}
-            <div className={styles.indicator}>
-              <div className={styles.indicatorValue}>
-                {availableMetrics.length}
-              </div>
-              <div className={styles.indicatorLabel}>
-                Unique Metrics
-              </div>
-            </div>
-
-            {/* Indicator 5 - Data Points */}
-            <div className={styles.indicator}>
-              <div className={styles.indicatorValue}>
-                {records.length}
-              </div>
-              <div className={styles.indicatorLabel}>
-                Recent Data Points
-              </div>
-            </div>
-
-            {/* Indicator 6 - Monitoring Status */}
+            {/* Indicator 3 - Monitoring Status */}
             <div className={styles.indicator}>
               <div className={styles.indicatorValue} style={{ fontSize: '1.4rem', color: stats ? 'green' : 'red' }}>
                 {stats ? 'ACTIVE' : 'INACTIVE'}
@@ -580,11 +475,6 @@ export default function DataPage() {
                   </tbody>
                 </table>
               </div>
-              {lastUpdated && (
-                <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#666', marginTop: '10px' }}>
-                  Last updated: {formatTimestamp(lastUpdated)}
-                </div>
-              )}
             </div>
           </div>
         </div>
