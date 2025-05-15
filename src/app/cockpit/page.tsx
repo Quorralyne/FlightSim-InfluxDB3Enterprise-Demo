@@ -319,12 +319,12 @@ export default function CockpitPage() {
                     const bankAngle = -bankAngleRaw;
 
                     // Get pitch angle value
-                    const pitchAngle = measurements.find(m => m.metric === 'flight_pitch')?.value || 0;
+                    const pitchAngle = 0;//measurements.find(m => m.metric === 'flight_pitch')?.value || 0;
 
                     // Calculate vertical offset for pitch (scale to fit within the indicator)
                     // We're mapping -35 to +35 degrees to a reasonable pixel range
                     // Negative pitch moves horizon up (aircraft nose down), positive pitch moves horizon down (aircraft nose up)
-                    const pitchOffset = -pitchAngle * 2;
+                    const pitchOffset = -pitchAngle * 4;
 
                     // Combined style for horizon elements with both rotation and vertical offset
                     const horizonStyle = {
@@ -364,7 +364,7 @@ export default function CockpitPage() {
 
                     return (
                       <div className={styles.attitudeIndicator}>
-                        <div className={styles.bankIndicator}>
+                        <div className={styles.attitudeDisplay}>
                           <div className={styles.bankMarkersContainer} style={{ transform: `rotate(${-bankAngle}deg)` }}>
                             <div className={styles.bankMarkers}>
                               {bankMarkers}
@@ -372,6 +372,21 @@ export default function CockpitPage() {
                           </div>
 
                           <div className={styles.horizonContainer} style={horizonStyle}>
+                            {/* Pitch reference lines */}
+                            <div className={styles.pitchLines}>
+                              {/* Positive pitch lines (above horizon) */}
+                              <div className={styles.pitchLineShort} style={{ top: 'calc(50% - 20px)' }}></div>
+                              <div className={styles.pitchLine} style={{ top: 'calc(50% - 40px)' }}></div>
+                              <div className={styles.pitchLineShort} style={{ top: 'calc(50% - 60px)' }}></div>
+                              <div className={styles.pitchLine} style={{ top: 'calc(50% - 80px)' }}></div>
+                              
+                              {/* Negative pitch lines (below horizon) */}
+                              <div className={styles.pitchLineShortWhite} style={{ top: 'calc(50% + 20px)' }}></div>
+                              <div className={styles.pitchLineWhite} style={{ top: 'calc(50% + 40px)' }}></div>
+                              <div className={styles.pitchLineShortWhite} style={{ top: 'calc(50% + 60px)' }}></div>
+                              <div className={styles.pitchLineWhite} style={{ top: 'calc(50% + 80px)' }}></div>
+                            </div>
+                            
                             <div className={styles.horizonLine}></div>
                             <div className={styles.skyBackground}></div>
                             <div className={styles.groundBackground}></div>
@@ -379,9 +394,8 @@ export default function CockpitPage() {
 
                           <div className={styles.planeContainer}>
                             <div className={styles.bankPointer}></div>
-                            <div className={styles.planeBody}></div>
-                            <div className={styles.planeWings}></div>
-                            <div className={styles.planeTail}></div>
+                            <div className={styles.leftWing}></div>
+                            <div className={styles.rightWing}></div>
                           </div>
                         </div>
                       </div>
