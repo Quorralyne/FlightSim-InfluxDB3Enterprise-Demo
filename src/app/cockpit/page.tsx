@@ -3,7 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useConfig } from '@/contexts/ConfigContext';
 import AppLayout from '../app-layout';
+import dynamic from 'next/dynamic';
 import styles from './cockpit.module.css';
+
+// Dynamically import the MapView component with no SSR
+const MapView = dynamic(
+  () => import('./MapView'),
+  { ssr: false }
+);
 
 // Interface for the consolidated flight data format
 interface FlightDataRecord {
@@ -274,8 +281,20 @@ export default function CockpitPage() {
               </div>
             </div>
 
+            {/* Map View */}
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h3 className={styles.cardTitle}>Flight Position</h3>
+              </div>
+              <div className={styles.cardContent}>
+                <MapView 
+                  latitude={getMetricValue('flight_latitude', null)}
+                  longitude={getMetricValue('flight_longitude', null)}
+                  heading={getMetricValue('flight_heading_magnetic', null)}
+                />
+              </div>
+            </div>
           </div>
-
         </div>
       </div>
     </AppLayout>
