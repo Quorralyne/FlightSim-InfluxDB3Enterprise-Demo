@@ -54,7 +54,11 @@ async function writeToInfluxDB(data: string, config: any) {
         const url = new URL(`${config.influxEndpoint}api/v3/write_lp`);
 
         // Use the active bucket from config
-        const bucketName = config.activeBucket || 'flightsim';
+        const bucketName = config.activeBucket;
+        if (!bucketName) {
+            console.error('[DirSizeMonitor] No active bucket configured');
+            return;
+        }
         url.searchParams.append('db', bucketName);
         url.searchParams.append('precision', 'nanosecond');
 
