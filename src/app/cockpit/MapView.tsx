@@ -146,20 +146,13 @@ export default function MapView({ latitude, longitude, heading }: MapViewProps) 
     // Calculate the new position
     const newLatLng = L.latLng(latitude, longitude);
     
-    // Always center the map on the new position
-    // The marker will stay fixed in the center due to the earlier setLatLng(mapCenter)
-    // isMapMoving.current = true;
+    // Center the map on the new position
     mapRef.current.setView(newLatLng, mapRef.current.getZoom(), {
       animate: true,
       duration: 0.5,
       easeLinearity: 0.25,
       noMoveStart: true
     });
-    
-    // Reset the flag after animation completes
-    // setTimeout(() => {
-    //   isMapMoving.current = false;
-    // }, 500);
     
     // Store the current position for the next update
     lastPositionRef.current = newLatLng;
