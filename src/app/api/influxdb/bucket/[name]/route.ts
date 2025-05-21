@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readConfig, getFormattedEndpoint, hasValidCredentials } from '@/lib/config';
+import { readConfig, writeConfig, getFormattedEndpoint, hasValidCredentials } from '@/lib/config';
+import { spawn } from 'child_process';
 
 export async function GET(
   request: NextRequest,
@@ -9,10 +10,12 @@ export async function GET(
   const tableName = "flight_data";
   let bucketInfo = {
     status: "offline",
-    hasTable: false
+    hasTable: false,
+    hasLvc: false,
+    lvcCreated: false
   };
 
-  const { name: bucketName } = await params;  try {
+  const { name: bucketName } = await params; try {
     // Get configuration
     const config = await readConfig();
 
@@ -51,6 +54,107 @@ export async function GET(
       bucketInfo.hasTable = true;
       const data = await response.json();
       bucketInfo.status = data[0]?.online > 0 ? "online" : "offline";
+
+      if (bucketInfo.status === "online") {
+
+        // Check if the bucket has an LVC configured
+        if (config.buckets && config.buckets[bucketName] && config.buckets[bucketName].lvc) {
+          bucketInfo.hasLvc = true;
+        }
+
+        // If there's no LVC, create one
+        if (!bucketInfo.hasLvc) {
+          try {
+            // Using the Windows path to the InfluxDB CLI executable
+            const cliPath = 'C:\\Program Files\\InfluxData\\influxdb\\influxdb3.exe';
+            const keyColumns = 'aircraft_tailnumber';
+            const valueColumns = 'flight_altitude,speed_true_airspeed,flight_heading_magnetic,flight_latitude,flight_longitude,speed_vertical,autopilot_heading_target,autopilot_master,autopilot_altitude_target,flight_bank,flight_pitch,aircraft_airline,aircraft_callsign,aircraft_type';
+            const cacheName = `${bucketName}_${tableName}_lvc`;
+            const ttl = '10s';
+            const count = 1;
+
+            const args = [
+              'create', 'last_cache',
+              '--database', bucketName,
+              '--token', config.adminToken,
+              '--table', tableName,
+              '--key-columns', keyColumns,
+              '--value-columns', valueColumns,
+              '--count', count.toString(),
+              '--ttl', ttl,
+              cacheName
+            ];
+
+            console.log(`Attempting to create Last Value Cache for bucket ${bucketName} with arguments:`, args);
+
+            // Use spawn to handle the CLI process
+            const cliProcess = spawn(cliPath, args);
+
+            // Collect output
+            let stdoutData = '';
+            let stderrData = '';
+
+            // Collect stdout data
+            cliProcess.stdout.on('data', (data: Buffer) => {
+              stdoutData += data.toString();
+            });
+
+            // Collect stderr data
+            cliProcess.stderr.on('data', (data: Buffer) => {
+              stderrData += data.toString();
+            });
+
+            // Wait for the process to exit
+            await new Promise<void>((resolve, reject) => {
+              cliProcess.on('close', (code: number) => {
+                if (code !== 0) {
+                  console.error(`LVC creation failed with code ${code}: ${stderrData}`);
+                  resolve(); // Resolve anyway to continue
+                } else {
+                  bucketInfo.lvcCreated = true;
+                  resolve();
+                }
+              });
+
+              cliProcess.on('error', (error: Error) => {
+                console.error('LVC creation error:', error);
+                resolve(); // Resolve anyway to continue
+              });
+            });
+
+            // Log the full output for debugging
+            console.log('LVC CLI command output:', { stdout: stdoutData, stderr: stderrData });
+
+            // If LVC was created successfully, store it in the configuration
+            if (bucketInfo.lvcCreated) {
+              if (!config.buckets) {
+                config.buckets = {};
+              }
+
+              if (!config.buckets[bucketName]) {
+                config.buckets[bucketName] = {
+                  name: bucketName
+                };
+              }
+
+              // Add or update LVC information in the bucket config
+              config.buckets[bucketName].lvc = {
+                name: cacheName,
+                tableName,
+                keyColumns,
+                valueColumns,
+                count,
+                ttl
+              };
+
+              await writeConfig(config);
+              bucketInfo.hasLvc = true;
+            }
+          } catch (lvcError) {
+            console.error('Error creating Last Value Cache:', lvcError);
+          }
+        }
+      }
     }
 
     return NextResponse.json(bucketInfo);

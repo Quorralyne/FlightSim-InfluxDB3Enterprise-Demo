@@ -9,7 +9,8 @@ export async function GET(
   const { name: bucketName } = await context.params;
   const searchParams = request.nextUrl.searchParams;
   const limit = searchParams.get('limit') || '20';
-  
+  const getCached = searchParams.get('cached') || 'false';
+
   try {
     // Get configuration
     const config = await readConfig();
@@ -31,6 +32,17 @@ export async function GET(
       );
     }
 
+    // Use Last Value Cache?
+    let q;
+    if (getCached === 'true') {
+      // For LVC, we need to use the specific cache name format: {bucketName}_flight_data_lvc
+      const tableName = 'flight_data';
+      const cacheName = `${bucketName}_${tableName}_lvc`;
+      q = `SELECT * FROM last_cache('${tableName}', '${cacheName}')`;
+    } else {
+      q = `SELECT * FROM flight_data WHERE time >= now() - INTERVAL '1 minute' ORDER BY time DESC LIMIT ${limit}`;
+    }
+
     // Get the most recent $limit measurements within the last minute
     const dataResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
       method: 'POST',
@@ -41,12 +53,12 @@ export async function GET(
       },
       body: JSON.stringify({
         db: bucketName,
-        q: `SELECT * FROM flight_data WHERE time >= now() - INTERVAL '1 minute' ORDER BY time DESC LIMIT ${limit}`
+        q
       })
     });
 
     let records = [];
-    
+
     if (dataResponse.ok) {
       try {
         const responseData = await dataResponse.json();

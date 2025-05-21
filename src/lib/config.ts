@@ -15,6 +15,14 @@ export interface Config {
       retentionPeriod?: number | string;
       token?: string;
       tokenId?: string;
+      lvc?: {
+        name: string;
+        tableName: string;
+        keyColumns: string;
+        valueColumns: string;
+        count: number;
+        ttl: string;
+      };
     };
   };
   [key: string]: any; // Allow for additional properties

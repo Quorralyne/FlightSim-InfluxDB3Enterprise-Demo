@@ -28,9 +28,8 @@ export default function CockpitPage() {
   const getMetricValue = (metricName: string, defaultValue: number | null): number | null => {
     if (records.length === 0) return defaultValue;
 
-    const fieldKey = `fields_${metricName}`;
-    if (records[0][fieldKey] !== undefined) {
-      return Number(records[0][fieldKey]);
+    if (records[0][metricName] !== undefined) {
+      return Number(records[0][metricName]);
     }
 
     return defaultValue;
@@ -44,7 +43,7 @@ export default function CockpitPage() {
       const interval = setInterval(() => {
         (async () => {
           try {
-            fetch(`/api/influxdb/bucket/${encodeURIComponent(activeBucket)}/measurements?limit=1`, {
+            fetch(`/api/influxdb/bucket/${encodeURIComponent(activeBucket)}/measurements?cached=true`, {
               // Add cache control headers to prevent caching
               headers: {
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -64,7 +63,7 @@ export default function CockpitPage() {
             console.error('Error in auto-refresh:', err);
           }
         })();
-      }, 500); // Update cockpit data every second
+      }, 200); // Update cockpit data every 200ms
 
       return () => {
         clearInterval(interval);
