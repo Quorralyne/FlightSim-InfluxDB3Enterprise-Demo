@@ -24,81 +24,101 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the properly formatted endpoint URL
-    const endpointUrl = getFormattedEndpoint(config);
-    
-    if (!endpointUrl) {
-      return NextResponse.json(
-        { success: false, error: 'InfluxDB endpoint is not configured' },
-        { status: 400 }
-      );
-    }
-
-    // For InfluxDB v3, we use the enterprise token endpoint directly
-    // We don't need to fetch bucket/database ID first
-    const tokenResponse = await fetch(`${endpointUrl}api/v3/enterprise/configure/token`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.adminToken}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        "token_name": `Token for ${bucketName}`,
-        "permissions": [
-          {
-            resource_type: "db",
-            resource_identifier: [bucketName],
-            actions: ["read", "write"]
+    try {
+      // Using the Windows path to the InfluxDB CLI executable
+      const cliPath = 'C:\\Program Files\\InfluxData\\influxdb\\influxdb3.exe';
+      const args = [
+        'create', 'token',
+        '--permission', `db:${bucketName}:read,write`,
+        '--name', `Token for ${bucketName}`,
+        '--token', config.adminToken,
+        '--expiry', '1w'
+      ];
+      
+      // Use spawn to handle the CLI process
+      const cliProcess = spawn(cliPath, args);
+      
+      // Collect output
+      let stdoutData = '';
+      let stderrData = '';
+      
+      // Collect stdout data
+      cliProcess.stdout.on('data', (data: Buffer) => {
+        stdoutData += data.toString();
+      });
+      
+      // Collect stderr data
+      cliProcess.stderr.on('data', (data: Buffer) => {
+        stderrData += data.toString();
+      });
+      
+      // Wait for the process to exit
+      await new Promise<void>((resolve, reject) => {
+        cliProcess.on('close', (code: number) => {
+          if (code !== 0) {
+            reject(new Error(`CLI process exited with code ${code}: ${stderrData}`));
+          } else {
+            resolve();
           }
-        ],
-        expiry_secs: 60 * 60 * 24 * 7
-      })
-    });
+        });
+        
+        cliProcess.on('error', (error: Error) => {
+          reject(error);
+        });
+      });
+      
+      // Log the full output for debugging
+      console.log('CLI command output:', { stdout: stdoutData, stderr: stderrData });
+      
+      // Try to extract the token from the output
+      // First try to match the full token line with ANSI codes
+      const tokenMatch = stdoutData.match(/\x1B\[1mToken:\x1B\[0m\s+([^\s]+)/) || 
+                        // Fallback to matching any token-like string that's at least 20 chars long
+                        stdoutData.match(/([a-zA-Z0-9_\-]{20,})/);
+      
+      if (!tokenMatch || !tokenMatch[1]) {
+        console.error('Failed to parse token from CLI output. Full output:', stdoutData);
+        throw new Error('Failed to parse token from CLI output');
+      }
+      
+      // Clean up the token in case there are any ANSI escape codes or extra characters
+      const token = tokenMatch[1].trim().replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+      const tokenId = `cli-${Date.now()}`;
 
-    if (!tokenResponse.ok) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Failed to create token: ${tokenResponse.statusText}`,
-          status: tokenResponse.status
+      // Save the token in our configuration
+      if (!config.buckets) {
+        config.buckets = {};
+      }
+      
+      // If the bucket doesn't exist, create it
+      if (!config.buckets[bucketName]) {
+        config.buckets[bucketName] = {
+          name: bucketName,
+          retentionPeriod: 'infinite'
+        };
+      }
+      
+      // Add the token to the bucket
+      config.buckets[bucketName].token = token;
+      config.buckets[bucketName].tokenId = tokenId;
+
+      await writeConfig(config);
+
+      return NextResponse.json({
+        success: true,
+        token: token,
+        tokenDetails: {
+          id: tokenId,
+          token: token,
+          name: tokenName,
+          description: description || `Token for ${bucketName} bucket`
         },
-        { status: tokenResponse.status }
-      );
+        message: `Token for bucket '${bucketName}' created successfully`
+      }, { status: 201 });
+    } catch (error) {
+      console.error('CLI command failed:', error);
+      throw new Error(`Failed to create token using CLI: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    const tokenData = await tokenResponse.json();
-
-    // Save the token in our configuration
-    if (!config.buckets) {
-      config.buckets = {};
-    }
-    
-    // If the bucket doesn't exist, create it
-    if (!config.buckets[bucketName]) {
-      config.buckets[bucketName] = {
-        name: bucketName,
-        retentionPeriod: 'infinite'
-      };
-    }
-    
-    // Add the token to the bucket
-    config.buckets[bucketName].token = tokenData.token;
-    config.buckets[bucketName].tokenId = tokenData.id;
-
-    await writeConfig(config);
-
-    return NextResponse.json({
-      success: true,
-      token: tokenData.token,
-      tokenDetails: {
-        id: tokenData.id,
-        token: tokenData.token,
-        name: tokenName,
-        description: description || `Token for ${bucketName} bucket`
-      },
-      message: `Token for bucket '${bucketName}' created successfully`
-    }, { status: 201 });
   } catch (error) {
     console.error('Error creating token:', error);
     return NextResponse.json(

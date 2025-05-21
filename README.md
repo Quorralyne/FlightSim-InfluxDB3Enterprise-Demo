@@ -68,27 +68,6 @@ This demo requires a self-hosted InfluxDB v3 Enterprise instance.
 
     > ℹ Note that you can always come back and copy the token again - this isn't a one-time operation.
 
-    > ⚠ If this step fails, you can create a bucket token using the InfluxDB CLI. Run the following command:
-    ```powershell
-    & 'C:\Program Files\InfluxData\influxdb\influxdb3.exe' create token `
-      --permission "db:flightsim:read,write" `
-      --name "Token for flightsim" `
-      --token <adminToken> `
-      --expiry 1w
-    ```
-    > And then add it to the `buckets.flightsim.token` property in the `config.json` file in the root of this repo:
-    ```json
-    {
-      "buckets": {
-        "flightsim": {
-          "name": "flightsim",
-          "retentionPeriod": 24,
-          "token": "<bucketToken>"
-        }
-      }
-    }
-    ```
-
 ## Database Size
 
 Currently, to get database size showing, you'll need to edit `config.json` in the repo root manually to add the `dataPath` as a top-level property:
