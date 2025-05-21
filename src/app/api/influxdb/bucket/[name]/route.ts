@@ -85,8 +85,6 @@ export async function GET(
               cacheName
             ];
 
-            console.log(`Attempting to create Last Value Cache for bucket ${bucketName} with arguments:`, args);
-
             // Use spawn to handle the CLI process
             const cliProcess = spawn(cliPath, args);
 
@@ -108,8 +106,7 @@ export async function GET(
             await new Promise<void>((resolve, reject) => {
               cliProcess.on('close', (code: number) => {
                 if (code !== 0) {
-                  console.error(`LVC creation failed with code ${code}: ${stderrData}`);
-                  resolve(); // Resolve anyway to continue
+                  resolve();
                 } else {
                   bucketInfo.lvcCreated = true;
                   resolve();
@@ -117,13 +114,9 @@ export async function GET(
               });
 
               cliProcess.on('error', (error: Error) => {
-                console.error('LVC creation error:', error);
-                resolve(); // Resolve anyway to continue
+                resolve();
               });
             });
-
-            // Log the full output for debugging
-            console.log('LVC CLI command output:', { stdout: stdoutData, stderr: stderrData });
 
             // If LVC was created successfully, store it in the configuration
             if (bucketInfo.lvcCreated) {
@@ -151,7 +144,6 @@ export async function GET(
               bucketInfo.hasLvc = true;
             }
           } catch (lvcError) {
-            console.error('Error creating Last Value Cache:', lvcError);
           }
         }
       }
