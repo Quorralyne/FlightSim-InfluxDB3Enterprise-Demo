@@ -72,12 +72,10 @@ export default function DataPage() {
           if (data.success) {
             setRecords(data.records);
 
-            // Extract unique metrics from the fields_* properties
+            // Extract unique metrics from the properties
             if (data.records.length > 0) {
               const firstRecord = data.records[0];
-              const metrics = Object.keys(firstRecord)
-                .filter(key => key.startsWith('fields_'))
-                .map(key => key.replace('fields_', ''));
+              const metrics = Object.keys(firstRecord);
 
               setAvailableMetrics(metrics.sort());
             }
@@ -332,11 +330,10 @@ export default function DataPage() {
                       records.map((record: FlightDataPoint, recordIndex: number) => {
                         // If 'all' is selected, we'll show all metrics for this record
                         if (metricFilter === 'all') {
-                          // Get all fields_* properties
+                          // Get all properties
                           const metricEntries = Object.entries(record)
-                            .filter(([key]) => key.startsWith('fields_'))
                             .map(([key, value]) => ({
-                              metric: key.replace('fields_', ''),
+                              metric: key,
                               value: value
                             }));
 
@@ -350,7 +347,7 @@ export default function DataPage() {
                           ));
                         } else {
                           // Only show the selected metric
-                          const fieldKey = `fields_${metricFilter}`;
+                          const fieldKey = metricFilter;
                           if (record[fieldKey] !== undefined) {
                             return (
                               <tr key={recordIndex}>

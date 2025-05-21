@@ -77,8 +77,7 @@ export async function GET(
 
       if (measurementCountResponse.ok) {
         const data = await measurementCountResponse.json();
-        // count the keys starting with "fields_"
-        stats.measurementCountPerRecord = Object.keys(data[0]).filter(key => key.startsWith('fields_')).length;
+        stats.measurementCountPerRecord = Object.keys(data[0]).length;
       }
     } catch (err) {
       console.error('Error fetching measurement count:', err);
