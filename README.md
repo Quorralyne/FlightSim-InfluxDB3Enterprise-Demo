@@ -6,8 +6,27 @@ This guide demonstrates how to use [MSFS2MQTT](https://github.com/bendechrai/MSF
 
 The demo setup consists of:
 
-1. **MSFS + FSUIPC**: Source of flight simulator data
-2. **MSFS2MQTT**: Extracts data and publishes to MQTT topics
+1. **InfluxDB v3**: Time series database for flight data
+2. **Node.js**: Run-time environment for this demo
+3. **This demo**
+4. **MSFS2Influx** or **MSFS2MQTT**: Get data from FlightSim to InfluxDB
+
+### MSFS2Influx
+
+Probably more performant.
+
+```mermaid
+flowchart LR
+    msfs["Microsoft Flight Simulator"] --> fsuipc["FSUIPC"]
+    fsuipc --> bridge["MSFS2Influx"]
+    bridge --> influxdb["InfluxDB v3 Enterprise"]
+    
+    style msfs fill:#f9f,stroke:#333,stroke-width:2px
+    style bridge fill:#bbf,stroke:#333,stroke-width:2px
+    style influxdb fill:#bfb,stroke:#333,stroke-width:4px
+```
+
+### MSFS2MQTT
 
 ```mermaid
 flowchart LR
@@ -51,20 +70,22 @@ This demo requires a self-hosted InfluxDB v3 Enterprise instance.
     ```
     to generate an admin token. **Store this in a safe space.**
 
-5. Start this visualisation app:
+5. [Instsll Node.js](https://nodejs.org/en/download/)
+
+6. Start this visualisation app:
     ```powershell
     Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
     npm install
     npm run dev
     ```
 
-6. Open http://localhost:3000 in your browser
+7. Open http://localhost:3000 in your browser
 
-7. Follow the setup wizard to connect to your InfluxDB instance. You'll need the Admin Token generated in step 4.
+8. Follow the setup wizard to connect to your InfluxDB instance. You'll need the Admin Token generated in step 4.
 
-8. You'll then see a list of the buckets in your InfluxDB instance. Create a new bucket named "flightsim".
+9. You'll then see a list of the buckets in your InfluxDB instance. Create a new bucket named "flightsim".
 
-9. Click on the `</>` icon to see the API token for the bucket, then "Generate Token", and finally "Copy Token".
+10. Click on the `</>` icon to see the API token for the bucket, then "Generate Token", and finally "Copy Token".
 
     > ℹ Note that you can always come back and copy the token again - this isn't a one-time operation.
 
@@ -92,7 +113,7 @@ echo $([Environment]::GetFolderPath("UserProfile") + "\influxdb_data\")
 
 You now have the demo running and reading data from InfluxDB.
 
-Next, you'll ned to install [MSFS2MQTT](https://github.com/bendechrai/MSFS2MQTT) to collect data from your simulator and publish it to MQTT. This projct will also help you configure Telegraf to collect data from MQTT and send it to InfluxDB. The Bucket name and API token you copied in step 9 will be needed.
+Next, you'll ned to install [MSFS2MQTT](https://github.com/bendechrai/MSFS2Influx) to collect data from your simulator and publish it to InfluxDB. The Bucket name and API token you copied in step 10 will be needed.
 
 ## Extending the Demo
 
