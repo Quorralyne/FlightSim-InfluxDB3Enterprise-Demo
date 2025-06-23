@@ -113,7 +113,7 @@ Currently, to get database size showing, you'll need to edit `config.json` in th
 echo $([Environment]::GetFolderPath("UserProfile") + "\influxdb_data\")
 ```
 
-> ℹ️ Note: that this file won't exists until after you've completed the setup wizard mentioned in the Setup section.
+> ℹ️ Note: that this file won't exist until after you've completed the setup wizard mentioned in the Setup section.
 
 ## Congratulations!
 
