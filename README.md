@@ -119,6 +119,6 @@ echo $([Environment]::GetFolderPath("UserProfile") + "\influxdb_data\")
 
 You now have the demo running and reading data from InfluxDB.
 
-Next, you'll ned to install [MSFS2Influx](https://github.com/bendechrai/MSFS2Influx) to collect data from your simulator and publish it to InfluxDB. The Bucket name and API token you copied in step 10 will be needed.
+Next, you'll need to install [MSFS2Influx](https://github.com/bendechrai/MSFS2Influx) to collect data from your simulator and publish it to InfluxDB. The Bucket name and API token you copied in step 10 will be needed.
 
 > 💡 Another option is to use [MSFS2MQTT](https://github.com/bendechrai/MSFS2MQTT) and [Telegraf](https://docs.influxdata.com/telegraf/v1/) to collect data from your simulator and publish it to InfluxDB. This might be less performant, but it's a bit more flexible.
