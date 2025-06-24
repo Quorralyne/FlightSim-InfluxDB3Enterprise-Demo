@@ -201,18 +201,23 @@ export default function DataPage() {
     ctx.lineTo(width - padding, height - padding);
     ctx.stroke();
 
-    // Draw data points
+    // Draw data points (timestamp-based X axis)
     if (data.length > 1) {
-      const xStep = (width - 2 * padding) / (data.length - 1);
+      // Parse timestamps
+      const timestamps = data.map(d => new Date(d.timestamp).getTime());
+      const minTime = Math.min(...timestamps);
+      const maxTime = Math.max(...timestamps);
+      const timeRange = maxTime - minTime || 1; // prevent divide by zero
 
       // Draw line
       ctx.beginPath();
-      ctx.strokeStyle = '#3182ce';
+      ctx.strokeStyle = '#aaa'; // grey lines
       ctx.lineWidth = 2;
 
       data.forEach((point, i) => {
         const value = point.value / 1024 / 1024;
-        const x = padding + i * xStep;
+        const t = new Date(point.timestamp).getTime();
+        const x = padding + ((t - minTime) / timeRange) * (width - 2 * padding);
         const y = height - padding - ((value - minValue) / (maxValue - minValue)) * (height - 2 * padding);
 
         if (i === 0) {
@@ -225,9 +230,10 @@ export default function DataPage() {
       ctx.stroke();
 
       // Draw points
-      data.forEach((point, i) => {
+      data.forEach((point) => {
         const value = point.value / 1024 / 1024;
-        const x = padding + i * xStep;
+        const t = new Date(point.timestamp).getTime();
+        const x = padding + ((t - minTime) / timeRange) * (width - 2 * padding);
         const y = height - padding - ((value - minValue) / (maxValue - minValue)) * (height - 2 * padding);
 
         ctx.beginPath();
