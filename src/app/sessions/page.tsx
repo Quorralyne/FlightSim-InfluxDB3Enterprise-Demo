@@ -31,17 +31,15 @@ const SessionsPage = () => {
                                 <thead>
                                     <tr>
                                         <th>Pilot's Name</th>
-                                        <th className={styles.centre}>Anonymous</th>
                                         <th className={styles.centre}>Flight Time</th>
                                         <th className={styles.right}>Timestamp</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {sessions.map((session: any) => (
+                                    {sessions.filter((session: any) => session.anonymous === false).map((session: any) => (
                                         <tr key={session.time}>
                                             <td>{session.pilot_name}</td>
-                                            <td className={styles.centre}>{session.anonymous ? 'Yes' : 'No'}</td>
-                                            <td className={styles.centre}>{session.flight_time}</td>
+                                            <td className={styles.centre}>{session.flight_time > 0 ? session.flight_time : 'pending'}</td>
                                             <td className={styles.right}>{session.time}</td>
                                         </tr>
                                     ))}
