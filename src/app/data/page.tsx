@@ -25,6 +25,9 @@ interface FlightDataPoint {
 interface BucketStats {
   recordCount: number;
   measurementCountPerRecord: number;
+  compactionEvents: number;
+  lastCompactionSaved: number | null;
+  maxCompactionSavings: number | null;
   dbSizeData: DataPoint[];
 }
 
@@ -34,6 +37,14 @@ export default function DataPage() {
   const [records, setRecords] = useState<FlightDataPoint[]>([]);
   const [metricFilter, setMetricFilter] = useState<string>('all');
   const [availableMetrics, setAvailableMetrics] = useState<string[]>([]);
+  const [measurementInterval, setMeasurementInterval] = useState<'m' | 's' | 'ms'>('m');
+
+  const cycleMeasurementInterval = () => {
+    const intervals = ['m', 's', 'ms'] as const;
+    const currentIndex = intervals.indexOf(measurementInterval);
+    const nextIndex = (currentIndex + 1) % intervals.length;
+    setMeasurementInterval(intervals[nextIndex]);
+  };
 
   // Refs for canvas elements
   const dbSizeCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -104,10 +115,83 @@ export default function DataPage() {
     const height = canvas.height;
     const padding = 45;
 
+    // Helper to find a nice step size
+    function niceStep(range: number) {
+      const steps = [1, 2, 5, 10];
+      const magnitude = Math.pow(10, Math.floor(Math.log10(range)));
+      let step = magnitude;
+      for (let s of steps) {
+        if (range / (s * magnitude) <= 5) {
+          step = s * magnitude;
+          break;
+        }
+      }
+      return step;
+    }
+
     // Find min and max values
     const values = data.map(d => d.value);
-    const minValue = Math.min(...values) * 0.9 / 1024 / 1024;
-    const maxValue = Math.max(...values) * 1.1 / 1024 / 1024;
+    const rawMin = Math.min(...values) / 1024 / 1024;
+    const rawMax = Math.max(...values) / 1024 / 1024;
+    const range = rawMax - rawMin;
+    const step = niceStep(range);
+    const niceMin = Math.floor(rawMin / step) * step;
+    const niceMax = Math.ceil(rawMax / step) * step;
+    const minValue = niceMin;
+    const maxValue = niceMax;
+
+    // Draw horizontal grid lines and y-axis labels before the data line
+    const numTicks = Math.round((maxValue - minValue) / step) + 1;
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < numTicks; i++) {
+      const val = minValue + i * step;
+      const y = height - padding - ((val - minValue) / (maxValue - minValue)) * (height - 2 * padding);
+      // Draw grid line
+      ctx.beginPath();
+      ctx.strokeStyle = '#eee';
+      ctx.moveTo(padding, y);
+      ctx.lineTo(width - padding, y);
+      ctx.stroke();
+      // Draw y-axis label
+      ctx.fillStyle = '#666';
+      ctx.fillText(Math.round(val).toString(), padding - 5, y);
+    }
+
+    // Draw x-axis timestamp markers and vertical grid lines
+    if (data.length > 1) {
+      // Parse timestamps
+      const timestamps = data.map(d => new Date(d.timestamp));
+      const minTime = Math.min(...timestamps.map(t => t.getTime()));
+      const maxTime = Math.max(...timestamps.map(t => t.getTime()));
+      const totalMinutes = (maxTime - minTime) / (1000 * 60);
+      // Decide interval
+      let interval = 10; // default 10 min
+      if (totalMinutes < 20) interval = 2;
+      else if (totalMinutes < 40) interval = 5;
+      // Find the first tick >= minTime rounded up to interval
+      const startTick = Math.ceil(minTime / (interval * 60 * 1000)) * (interval * 60 * 1000);
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      for (let tick = startTick; tick <= maxTime; tick += interval * 60 * 1000) {
+        // Find x position
+        const ratio = (tick - minTime) / (maxTime - minTime);
+        const x = padding + ratio * (width - 2 * padding);
+        // Draw vertical grid line
+        ctx.beginPath();
+        ctx.strokeStyle = '#eee';
+        ctx.moveTo(x, padding);
+        ctx.lineTo(x, height - padding);
+        ctx.stroke();
+        // Draw timestamp label
+        const date = new Date(tick);
+        const label = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        ctx.fillStyle = '#666';
+        ctx.fillText(label, x, height - padding + 5);
+      }
+    }
 
     // Draw axes
     ctx.beginPath();
@@ -151,22 +235,6 @@ export default function DataPage() {
         ctx.arc(x, y, 3, 0, Math.PI * 2);
         ctx.fill();
       });
-
-      // Draw y-axis labels
-      ctx.fillStyle = '#666';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-
-      // Min value
-      ctx.fillText(minValue.toFixed(2), padding - 5, height - padding);
-
-      // Max value
-      ctx.fillText(maxValue.toFixed(2), padding - 5, padding);
-
-      // Middle value
-      const middleValue = (minValue + maxValue) / 2;
-      ctx.fillText(middleValue.toFixed(2), padding - 5, height - padding - (height - 2 * padding) / 2);
     }
   };
 
@@ -228,13 +296,20 @@ export default function DataPage() {
           {/* Indicators Row - 6 small measurement cards */}
           <div className={styles.indicatorsRow}>
             {/* Indicator 1 - Measurements per minute */}
-            <div className={styles.indicator}>
+            <div className={`${styles.indicator} ${styles.cursor}`} onClick={cycleMeasurementInterval}>
               <div className={styles.indicatorValue}>
                 {/* format number with thousands separator*/}
-                {((stats?.recordCount || 0) * (stats?.measurementCountPerRecord || 0)).toLocaleString()}
+                {measurementInterval === 'm' ? ((stats?.recordCount || 0) * (stats?.measurementCountPerRecord || 0)).toLocaleString()
+                : measurementInterval === 's' ? ((stats?.recordCount || 0) * (stats?.measurementCountPerRecord || 0) / 60).toLocaleString()
+                : measurementInterval === 'ms' ? ((stats?.recordCount || 0) * (stats?.measurementCountPerRecord || 0) / 60000).toLocaleString()
+                : 'N/A'}
               </div>
               <div className={styles.indicatorLabel}>
-                Measurements per minute
+                Measurements per {
+                measurementInterval === 'm' ? 'minute'
+                : measurementInterval === 's' ? 'second'
+                : measurementInterval === 'ms' ? 'millisecond'
+                : 'N/A'}
               </div>
             </div>
 
@@ -248,13 +323,43 @@ export default function DataPage() {
               </div>
             </div>
 
-            {/* Indicator 3 - Monitoring Status */}
+            {/* Indicator 3 - Database Size */}
             <div className={styles.indicator}>
-              <div className={styles.indicatorValue} style={{ fontSize: '1.4rem', color: stats ? 'green' : 'red' }}>
-                {stats ? 'ACTIVE' : 'INACTIVE'}
+              <div className={styles.indicatorValue}>
+                {((stats?.dbSizeData[stats?.dbSizeData.length - 1].value || 0) / 1024 / 1024).toFixed(2)}
               </div>
               <div className={styles.indicatorLabel}>
-                Monitoring Status
+                Database Size (MB)
+              </div>
+            </div>
+
+            {/* Indicator 4 - Compaction Events */}
+            <div className={styles.indicator}>
+              <div className={styles.indicatorValue}>
+                {stats?.compactionEvents}
+              </div>
+              <div className={styles.indicatorLabel}>
+                Compaction Events
+              </div>
+            </div>
+
+            {/* Indicator 5 - Last Compaction Saved */}
+            <div className={styles.indicator}>
+              <div className={styles.indicatorValue}>
+                {stats?.lastCompactionSaved ? (stats?.lastCompactionSaved / 1024 / 1024).toFixed(2) : 'N/A'}
+              </div>
+              <div className={styles.indicatorLabel}>
+                Last Compaction Saved (MB)
+              </div>
+            </div>
+
+            {/* Indicator 6 - Max Compaction Savings */}
+            <div className={styles.indicator}>
+              <div className={styles.indicatorValue}>
+                {stats?.maxCompactionSavings ? (stats?.maxCompactionSavings / 1024 / 1024).toFixed(2) : 'N/A'}
+              </div>
+              <div className={styles.indicatorLabel}>
+                Max Compaction Savings (MB)
               </div>
             </div>
           </div>
@@ -270,8 +375,8 @@ export default function DataPage() {
                 <div className={styles.graphContainer}>
                   <canvas
                     ref={dbSizeCanvasRef}
-                    width="500"
-                    height="200"
+                    width="1024"
+                    height="300"
                     style={{ width: '100%', height: '100%' }}
                   ></canvas>
                 </div>

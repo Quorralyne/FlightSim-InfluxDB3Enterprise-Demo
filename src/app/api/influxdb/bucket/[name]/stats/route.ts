@@ -13,6 +13,9 @@ export async function GET(
     measurementCountPerRecord: 0,
     dbSizeData: [],
     compactedSizeData: [],
+    compactionEvents: 0,
+    lastCompactionSaved: null,
+    maxCompactionSavings: null,
     lastUpdated: new Date().toISOString()
   };
 
@@ -83,7 +86,7 @@ export async function GET(
       console.error('Error fetching measurement count:', err);
     }
 
-    // Count the number of records in the last hour
+    // Count the number of directory stats records in the last hour
     const sizeDataResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
       method: 'POST',
       headers: {
@@ -114,8 +117,98 @@ export async function GET(
       stats.dbSizeData = data.filter((item: any) => item.folder === 'db_size').map((item: any) => ({
         timestamp: item.time,
         value: item.directory_size_bytes
-      }));
+      }))
+      .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     }
+
+    // Count the number of times the disk usage dropped in all time
+    const compactionEventsResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${config.adminToken}`
+      },
+      body: JSON.stringify({
+        db: bucketName,
+        q: `SELECT COUNT(*) AS compaction_events FROM (SELECT time, directory_size_bytes, LAG(directory_size_bytes) OVER (ORDER BY time) AS prev_size FROM directory_stats WHERE folder = 'db_size') WHERE directory_size_bytes < prev_size`
+      })
+    });
+
+    if (compactionEventsResponse.ok) {
+      const data = await compactionEventsResponse.json();
+      stats.compactionEvents = data[0].compaction_events;
+    }
+
+    // Query to get the amount saved by the last compaction
+    const lastCompactionResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${config.adminToken}`
+      },
+      body: JSON.stringify({
+        db: bucketName,
+        q: `
+          SELECT 
+            (prev_size - directory_size_bytes) AS saved_bytes,
+            time,
+            directory_size_bytes AS post_compaction_usage
+          FROM (
+            SELECT 
+              time, 
+              directory_size_bytes, 
+              LAG(directory_size_bytes) OVER (ORDER BY time) AS prev_size
+            FROM directory_stats
+            WHERE folder = 'db_size'
+          )
+          WHERE directory_size_bytes < prev_size
+          ORDER BY time DESC
+          LIMIT 1
+        `
+      })
+    });
+
+    let lastCompactionSaved = null;
+    let postCompactionUsage = null;
+    if (lastCompactionResponse.ok) {
+      const data = await lastCompactionResponse.json();
+      lastCompactionSaved = data[0]?.saved_bytes ?? null;
+      postCompactionUsage = data[0]?.post_compaction_usage ?? null;
+    }
+    stats.lastCompactionSaved = lastCompactionSaved;
+
+    // Query for the highest disk usage in the last hour
+    const maxUsageResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${config.adminToken}`
+      },
+      body: JSON.stringify({
+        db: bucketName,
+        q: `
+          SELECT MAX(directory_size_bytes) AS max_usage
+          FROM directory_stats
+          WHERE folder = 'db_size'
+          AND time >= now() - INTERVAL '1 hour'
+        `
+      })
+    });
+    let maxUsage = null;
+    if (maxUsageResponse.ok) {
+      const data = await maxUsageResponse.json();
+      maxUsage = data[0]?.max_usage ?? null;
+    }
+
+    // Calculate the difference
+    let maxCompactionSavings = null;
+    if (maxUsage !== null && postCompactionUsage !== null) {
+      maxCompactionSavings = maxUsage - postCompactionUsage;
+    }
+    stats.maxCompactionSavings = maxCompactionSavings;
 
     return NextResponse.json({
       success: true,
