@@ -86,6 +86,7 @@ export async function GET(
             ];
 
             // Use spawn to handle the CLI process
+            console.log(`Creating LVC for bucket ${bucketName} with command:\n\ninfluxdb3 ${args.join(' ')}\n\n`);
             const cliProcess = spawn(cliPath, args);
 
             // Collect output

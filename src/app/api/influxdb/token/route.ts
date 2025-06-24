@@ -32,10 +32,11 @@ export async function POST(request: NextRequest) {
         '--permission', `db:${bucketName}:read,write`,
         '--name', `Token for ${bucketName}`,
         '--token', config.adminToken,
-        '--expiry', '1w'
+        '--expiry', '7y'
       ];
       
       // Use spawn to handle the CLI process
+      console.log(`Creating token for bucket ${bucketName} with command:\n\ninfluxdb3 ${args.join(' ')}\n\n`);    
       const cliProcess = spawn(cliPath, args);
       
       // Collect output

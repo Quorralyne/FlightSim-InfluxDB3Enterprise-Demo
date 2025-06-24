@@ -222,13 +222,6 @@ export default function DataPage() {
       <div className={styles.tabContent}>
         <div className={styles.cardHeader} style={{ marginBottom: '20px' }}>
           <h2>Flight Data Dashboard: {activeBucket}</h2>
-          <Button
-            variant="outline"
-            onClick={fetchData}
-          >
-            <RefreshIcon size={16} className="mr-2" />
-            Refresh Data
-          </Button>
         </div>
 
         <div className={styles.dashboardGrid}>
@@ -241,7 +234,7 @@ export default function DataPage() {
                 {((stats?.recordCount || 0) * (stats?.measurementCountPerRecord || 0)).toLocaleString()}
               </div>
               <div className={styles.indicatorLabel}>
-                Data Points
+                Measurements per minute
               </div>
             </div>
 

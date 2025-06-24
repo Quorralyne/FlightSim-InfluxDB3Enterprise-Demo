@@ -57,13 +57,26 @@ This demo requires a self-hosted InfluxDB v3 Enterprise instance.
 
    ```powershell
    & 'C:\Program Files\InfluxData\influxdb\influxdb3.exe' serve `
-     --node-id flightsim `
+     --node-id demonode `
      --object-store file `
      --data-dir $([Environment]::GetFolderPath("UserProfile") + "\influxdb_data\") `
      --cluster-id cluster `
      --compaction-max-num-files-per-plan 100 `
      --compaction-gen2-duration 5m
    ```
+
+    Or run it in a docker container:
+
+    ```powershell
+    docker run -it -p 8181:8181 -v 'C:\path\to\influxdb_data:/influxdb_data' `
+      influxdb:3-enterprise serve ` 
+      --node-id demonode ` 
+      --object-store file ` 
+      --data-dir /influxdb_data ` 
+      --cluster-id cluster ` 
+      --compaction-max-num-files-per-plan 100 `
+      --compaction-gen2-duration 5m
+    ```
 
    > ℹ️ The first time you run this, you'll be asked to select a license type. Choose (1) FREE TRIAL, enter your email address, and wait for the verification email. After verifying, the command line process will complete, and InfluxDB3 will attempt to run. You might need to allow firewall access. I ticked the "Private networks, such as my home or work network" too, just in case.
 
