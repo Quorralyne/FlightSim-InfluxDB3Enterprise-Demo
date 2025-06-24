@@ -57,6 +57,17 @@
   flex-direction: column;
 }
 
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.headerTitle {
+  margin: 0;
+}
+
 .cardHeader {
   display: flex;
   justify-content: space-between;

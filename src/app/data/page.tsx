@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import Notice from '@/components/ui/Notice';
 import { RefreshIcon } from '@/components/ui/icons/Icons';
 import styles from './data.module.css';
+import PilotName from '../components/PilotName';
 
 // Types for our data
 interface DataPoint {
@@ -340,8 +341,9 @@ export default function DataPage() {
   return (
     <AppLayout>
       <div className={styles.tabContent}>
-        <div className={styles.cardHeader} style={{ marginBottom: '20px' }}>
-          <h2>Flight Data Dashboard: {activeBucket}</h2>
+        <div className={styles.headerRow}>
+          <h2 className={styles.headerTitle}>Flight Data</h2>
+          <PilotName />
         </div>
 
         <div className={styles.dashboardGrid}>

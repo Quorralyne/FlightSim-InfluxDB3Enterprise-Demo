@@ -1,0 +1,23 @@
+.pilotNameContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.pilotInput {
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  min-width: 120px;
+}
+
+.pilotButton {
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: none;
+  background: #3182ce;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}

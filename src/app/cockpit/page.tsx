@@ -5,6 +5,7 @@ import { useConfig } from '@/contexts/ConfigContext';
 import AppLayout from '../app-layout';
 import dynamic from 'next/dynamic';
 import styles from './cockpit.module.css';
+import PilotName from '../components/PilotName';
 
 // Dynamically import the MapView component with no SSR
 const MapView = dynamic(
@@ -85,8 +86,9 @@ export default function CockpitPage() {
   return (
     <AppLayout>
       <div className={styles.tabContent}>
-        <div className={styles.cardHeader} style={{ marginBottom: '20px' }}>
-          <h2>Cockpit Dashboard: {activeBucket}</h2>
+        <div className={styles.headerRow}>
+          <h2 className={styles.headerTitle}>Cockpit Dashboard: {activeBucket}</h2>
+          <PilotName />
         </div>
 
         <div className={styles.dashboardGrid}>

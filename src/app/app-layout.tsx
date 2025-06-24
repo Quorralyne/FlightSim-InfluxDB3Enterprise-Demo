@@ -97,6 +97,12 @@ export default function AppLayout({
               Cockpit
             </span>
           )}
+          <Link
+            href="/sessions"
+            className={`${styles.tabButton} ${isActive('sessions') ? styles.active : ''}`}
+          >
+            Sessions
+          </Link>
         </div>
         <div className={styles.tabContainer}>
           {children}

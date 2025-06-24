@@ -79,6 +79,18 @@
   margin-bottom: 15px;
 }
 
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.headerTitle {
+  margin: 0;
+}
+
+
 .cardTitle {
   font-size: 1.1rem;
   font-weight: 600;
