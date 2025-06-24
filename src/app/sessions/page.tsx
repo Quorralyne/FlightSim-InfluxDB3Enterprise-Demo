@@ -9,9 +9,15 @@ const SessionsPage = () => {
 
     const [sessions, setSessions] = useState([]);
     useEffect(() => {
-        fetch('/api/influxdb/flightsession')
-            .then(response => response.json())
-            .then(data => setSessions(data.sessions));
+        const fetchSessions = () => {
+            fetch('/api/influxdb/flightsession')
+                .then(response => response.json())
+                .then(data => setSessions(data.sessions));
+        };
+        fetchSessions();
+        const handleUpdate = () => fetchSessions();
+        window.addEventListener('sessionsUpdate', handleUpdate);
+        return () => window.removeEventListener('sessionsUpdate', handleUpdate);
     }, []);
 
     return (
@@ -23,7 +29,7 @@ const SessionsPage = () => {
                 </div>
                 <div className={styles.card}>
                     <div className={styles.cardHeader}>
-                        <h3 className={styles.cardTitle}>Sessions</h3>
+                        <h3 className={styles.cardTitle}>Sessions ({sessions.length})</h3>
                     </div>
                     <div className={styles.cardContent}>
                         {sessions.length > 0 ? (

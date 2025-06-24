@@ -97,12 +97,21 @@ export default function AppLayout({
               Cockpit
             </span>
           )}
-          <Link
-            href="/sessions"
-            className={`${styles.tabButton} ${isActive('sessions') ? styles.active : ''}`}
-          >
-            Sessions
-          </Link>
+          {activeBucket ? (
+            <Link
+              href="/sessions"
+              className={`${styles.tabButton} ${isActive('sessions') ? styles.active : ''}`}
+            >
+              Sessions
+            </Link>
+          ) : (
+            <span
+              className={`${styles.tabButton} ${styles.disabled}`}
+              title="No active bucket available. Please select a bucket with data first."
+            >
+              Sessions
+            </span>
+          )}
         </div>
         <div className={styles.tabContainer}>
           {children}
