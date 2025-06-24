@@ -39,7 +39,7 @@ export default function DataPage() {
   const [availableMetrics, setAvailableMetrics] = useState<string[]>([]);
 
   // Units for size displays
-  const [measurementInterval, setMeasurementInterval] = useState<'min' | 'sec' | 'ms'>('min');
+  const [measurementInterval, setMeasurementInterval] = useState<'min' | 'sec' | 'ms'>('sec');
   const [dbSizeUnits, setDbSizeUnits] = useState<'kb' | 'mb' | 'gb'>('mb');
   const [lastCompactionSavedUnits, setLastCompactionSavedUnits] = useState<'kb' | 'mb' | 'gb'>('mb');
   const [totalCompactionSavingsUnits, setTotalCompactionSavingsUnits] = useState<'kb' | 'mb' | 'gb'>('gb');
