@@ -27,7 +27,7 @@ interface BucketStats {
   measurementCountPerRecord: number;
   compactionEvents: number;
   lastCompactionSaved: number | null;
-  maxCompactionSavings: number | null;
+  totalCompactionSavings: number | null;
   dbSizeData: DataPoint[];
 }
 
@@ -37,13 +37,59 @@ export default function DataPage() {
   const [records, setRecords] = useState<FlightDataPoint[]>([]);
   const [metricFilter, setMetricFilter] = useState<string>('all');
   const [availableMetrics, setAvailableMetrics] = useState<string[]>([]);
-  const [measurementInterval, setMeasurementInterval] = useState<'m' | 's' | 'ms'>('m');
+
+  // Units for size displays
+  const [measurementInterval, setMeasurementInterval] = useState<'min' | 'sec' | 'ms'>('min');
+  const [dbSizeUnits, setDbSizeUnits] = useState<'kb' | 'mb' | 'gb'>('mb');
+  const [lastCompactionSavedUnits, setLastCompactionSavedUnits] = useState<'kb' | 'mb' | 'gb'>('mb');
+  const [totalCompactionSavingsUnits, setTotalCompactionSavingsUnits] = useState<'kb' | 'mb' | 'gb'>('gb');
 
   const cycleMeasurementInterval = () => {
-    const intervals = ['m', 's', 'ms'] as const;
+    const intervals = ['min', 'sec', 'ms'] as const;
     const currentIndex = intervals.indexOf(measurementInterval);
     const nextIndex = (currentIndex + 1) % intervals.length;
     setMeasurementInterval(intervals[nextIndex]);
+  };
+
+  const cycleDbSizeUnits = () => {
+    const units = ['kb', 'mb', 'gb'] as const;
+    const currentIndex = units.indexOf(dbSizeUnits);
+    const nextIndex = (currentIndex + 1) % units.length;
+    setDbSizeUnits(units[nextIndex]);
+  };
+
+  const cycleLastCompactionSavedUnits = () => {
+    const units = ['kb', 'mb', 'gb'] as const;
+    const currentIndex = units.indexOf(lastCompactionSavedUnits);
+    const nextIndex = (currentIndex + 1) % units.length;
+    setLastCompactionSavedUnits(units[nextIndex]);
+  };
+
+  const cycleTotalCompactionSavingsUnits = () => {
+    const units = ['kb', 'mb', 'gb'] as const;
+    const currentIndex = units.indexOf(totalCompactionSavingsUnits);
+    const nextIndex = (currentIndex + 1) % units.length;
+    setTotalCompactionSavingsUnits(units[nextIndex]);
+  };
+
+  // Helper to convert minutes to selected units
+  const formatMinutes = (minutes: number | null | undefined, units: 'min' | 'sec' | 'ms') => {
+    if (minutes == null) return 'N/A';
+    let value = minutes;
+    if (units === 'min') value = value;
+    if (units === 'sec') value = value / 60;
+    if (units === 'ms') value = value / 60 / 1000;
+    return value.toFixed(2);
+  };
+
+  // Helper to convert bytes to selected units
+  const formatSize = (bytes: number | null | undefined, units: 'kb' | 'mb' | 'gb') => {
+    if (bytes == null) return 'N/A';
+    let value = bytes;
+    if (units === 'kb') value = value / 1024;
+    if (units === 'mb') value = value / 1024 / 1024;
+    if (units === 'gb') value = value / 1024 / 1024 / 1024;
+    return value.toFixed(2);
   };
 
   // Refs for canvas elements
@@ -299,43 +345,49 @@ export default function DataPage() {
         </div>
 
         <div className={styles.dashboardGrid}>
-          {/* Indicators Row - 6 small measurement cards */}
-          <div className={styles.indicatorsRow}>
+
+          <div className={styles.chart}>
+            {/* Database size graph */}
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h3 className={styles.cardTitle}>Database Size (MB)</h3>
+              </div>
+              <div className={styles.cardContent}>
+                <div className={styles.graphContainer}>
+                  <canvas
+                    ref={dbSizeCanvasRef}
+                    width="1000"
+                    height="500"
+                    style={{ width: '100%', height: '100%' }}
+                  ></canvas>
+                </div>
+                <div className={styles.statLabel}>
+                  Last hour (10s intervals)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.indicators}>
             {/* Indicator 1 - Measurements per minute */}
             <div className={`${styles.indicator} ${styles.cursor}`} onClick={cycleMeasurementInterval}>
               <div className={styles.indicatorValue}>
-                {/* format number with thousands separator*/}
-                {measurementInterval === 'm' ? ((stats?.recordCount || 0) * (stats?.measurementCountPerRecord || 0)).toLocaleString()
-                : measurementInterval === 's' ? ((stats?.recordCount || 0) * (stats?.measurementCountPerRecord || 0) / 60).toLocaleString()
-                : measurementInterval === 'ms' ? ((stats?.recordCount || 0) * (stats?.measurementCountPerRecord || 0) / 60000).toLocaleString()
-                : 'N/A'}
+                {formatMinutes((stats?.recordCount || 0) * (stats?.measurementCountPerRecord || 0), measurementInterval)}
               </div>
               <div className={styles.indicatorLabel}>
-                Measurements per {
-                measurementInterval === 'm' ? 'minute'
-                : measurementInterval === 's' ? 'second'
-                : measurementInterval === 'ms' ? 'millisecond'
-                : 'N/A'}
-              </div>
-            </div>
-
-            {/* Indicator 2 - Metrics Count */}
-            <div className={styles.indicator}>
-              <div className={styles.indicatorValue}>
-                {stats?.measurementCountPerRecord}
-              </div>
-              <div className={styles.indicatorLabel}>
-                Unique Measurements
+                Measurements / {measurementInterval}
               </div>
             </div>
 
             {/* Indicator 3 - Database Size */}
-            <div className={styles.indicator}>
+            <div className={styles.indicator + ' ' + styles.cursor} onClick={cycleDbSizeUnits}>
               <div className={styles.indicatorValue}>
-                {((stats?.dbSizeData[stats?.dbSizeData.length - 1].value || 0) / 1024 / 1024).toFixed(2)}
+                {stats?.dbSizeData && stats.dbSizeData.length > 0
+                  ? formatSize(stats.dbSizeData[stats.dbSizeData.length - 1].value, dbSizeUnits)
+                  : 'N/A'}
               </div>
               <div className={styles.indicatorLabel}>
-                Database Size (MB)
+                Database Size ({dbSizeUnits.toUpperCase()})
               </div>
             </div>
 
@@ -350,53 +402,29 @@ export default function DataPage() {
             </div>
 
             {/* Indicator 5 - Last Compaction Saved */}
-            <div className={styles.indicator}>
+            <div className={styles.indicator + ' ' + styles.cursor} onClick={cycleLastCompactionSavedUnits}>
               <div className={styles.indicatorValue}>
-                {stats?.lastCompactionSaved ? (stats?.lastCompactionSaved / 1024 / 1024).toFixed(2) : 'N/A'}
+                {formatSize(stats?.lastCompactionSaved, lastCompactionSavedUnits)}
               </div>
               <div className={styles.indicatorLabel}>
-                Last Compaction Saved (MB)
+                Last Compaction Saved ({lastCompactionSavedUnits.toUpperCase()})
               </div>
             </div>
 
-            {/* Indicator 6 - Max Compaction Savings */}
-            <div className={styles.indicator}>
+            {/* Indicator 6 - Total Compaction Savings */}
+            <div className={styles.indicator + ' ' + styles.cursor} onClick={cycleTotalCompactionSavingsUnits}>
               <div className={styles.indicatorValue}>
-                {stats?.maxCompactionSavings ? (stats?.maxCompactionSavings / 1024 / 1024).toFixed(2) : 'N/A'}
+                {formatSize(stats?.totalCompactionSavings, totalCompactionSavingsUnits)}
               </div>
               <div className={styles.indicatorLabel}>
-                Max Compaction Savings (MB)
+                Total Compaction Savings ({totalCompactionSavingsUnits.toUpperCase()})
               </div>
             </div>
           </div>
 
-          {/* Graphs Row - Side by side */}
-          <div className={styles.graphsRow}>
-            {/* Database size graph */}
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <h3 className={styles.cardTitle}>Database Size (MB)</h3>
-              </div>
-              <div className={styles.cardContent}>
-                <div className={styles.graphContainer}>
-                  <canvas
-                    ref={dbSizeCanvasRef}
-                    width="1024"
-                    height="300"
-                    style={{ width: '100%', height: '100%' }}
-                  ></canvas>
-                </div>
-                <div className={styles.statLabel}>
-                  Last hour (10s intervals)
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Measurements table - Full width */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>
-              <h3 className={styles.cardTitle}>Recent Measurements</h3>
+              <h3 className={styles.cardTitle}>Recent Measurements ({stats?.measurementCountPerRecord} unique)</h3>
               <div className={styles.filterContainer}>
                 <label htmlFor="metricFilter" className={styles.filterLabel}>Filter by metric:</label>
                 <select
@@ -430,32 +458,22 @@ export default function DataPage() {
                         </td>
                       </tr>
                     ) : (
+                      // If showing all metrics, just show first record
+                      metricFilter === 'all' ? availableMetrics.map((metric) => (
+                        <tr key={metric}>
+                          <td>{metric}</td>
+                          <td>{String(records[0][metric])}</td>
+                          <td>{formatTimestamp(records[0].time)}</td>
+                        </tr>
+                      )) : (
                       // For each record, we'll display the selected metric
                       records.map((record: FlightDataPoint, recordIndex: number) => {
-                        // If 'all' is selected, we'll show all metrics for this record
-                        if (metricFilter === 'all') {
-                          // Get all properties
-                          const metricEntries = Object.entries(record)
-                            .map(([key, value]) => ({
-                              metric: key,
-                              value: value
-                            }));
-
-                          // Return a row for each metric in this record
-                          return metricEntries.map(({ metric, value }, metricIndex: number) => (
-                            <tr key={`${recordIndex}-${metricIndex}`}>
-                              <td>{metric}</td>
-                              <td>{String(value)}</td>
-                              <td>{formatTimestamp(record.time)}</td>
-                            </tr>
-                          ));
-                        } else {
-                          // Only show the selected metric
-                          const fieldKey = metricFilter;
-                          if (record[fieldKey] !== undefined) {
-                            return (
-                              <tr key={recordIndex}>
-                                <td>{metricFilter}</td>
+                        // Only show the selected metric
+                        const fieldKey = metricFilter;
+                        if (record[fieldKey] !== undefined) {
+                          return (
+                            <tr key={recordIndex}>
+                              <td>{metricFilter}</td>
                                 <td>{String(record[fieldKey])}</td>
                                 <td>{formatTimestamp(record.time)}</td>
                               </tr>
@@ -463,7 +481,7 @@ export default function DataPage() {
                           }
                           return null;
                         }
-                      })
+                      ))
                     )}
                   </tbody>
                 </table>

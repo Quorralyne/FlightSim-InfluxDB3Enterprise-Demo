@@ -15,7 +15,7 @@ export async function GET(
     compactedSizeData: [],
     compactionEvents: 0,
     lastCompactionSaved: null,
-    maxCompactionSavings: null,
+    totalCompactionSavings: null,
     lastUpdated: new Date().toISOString()
   };
 
@@ -121,27 +121,8 @@ export async function GET(
       .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     }
 
-    // Count the number of times the disk usage dropped in all time
+    // Query for all compaction events (savings, count, last event)
     const compactionEventsResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${config.adminToken}`
-      },
-      body: JSON.stringify({
-        db: bucketName,
-        q: `SELECT COUNT(*) AS compaction_events FROM (SELECT time, directory_size_bytes, LAG(directory_size_bytes) OVER (ORDER BY time) AS prev_size FROM directory_stats WHERE folder = 'db_size') WHERE directory_size_bytes < prev_size`
-      })
-    });
-
-    if (compactionEventsResponse.ok) {
-      const data = await compactionEventsResponse.json();
-      stats.compactionEvents = data[0].compaction_events;
-    }
-
-    // Query to get the amount saved by the last compaction
-    const lastCompactionResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -165,50 +146,20 @@ export async function GET(
           )
           WHERE directory_size_bytes < prev_size
           ORDER BY time DESC
-          LIMIT 1
         `
       })
     });
 
-    let lastCompactionSaved = null;
-    let postCompactionUsage = null;
-    if (lastCompactionResponse.ok) {
-      const data = await lastCompactionResponse.json();
-      lastCompactionSaved = data[0]?.saved_bytes ?? null;
-      postCompactionUsage = data[0]?.post_compaction_usage ?? null;
+    let compactionEvents = [];
+    if (compactionEventsResponse.ok) {
+      compactionEvents = await compactionEventsResponse.json();
+      // Get the number of compaction events
+      stats.compactionEvents = compactionEvents.length;
+      // Get the last compaction event
+      stats.lastCompactionSaved = compactionEvents.length > 0 ? compactionEvents[0].saved_bytes ?? null : null;
+      // Get the total compaction savings
+      stats.totalCompactionSavings = compactionEvents.reduce((sum: number, ev: { saved_bytes?: number }) => sum + (ev.saved_bytes ?? 0), 0);
     }
-    stats.lastCompactionSaved = lastCompactionSaved;
-
-    // Query for the highest disk usage in the last hour
-    const maxUsageResponse = await fetch(`${endpointUrl}api/v3/query_sql`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${config.adminToken}`
-      },
-      body: JSON.stringify({
-        db: bucketName,
-        q: `
-          SELECT MAX(directory_size_bytes) AS max_usage
-          FROM directory_stats
-          WHERE folder = 'db_size'
-          AND time >= now() - INTERVAL '1 hour'
-        `
-      })
-    });
-    let maxUsage = null;
-    if (maxUsageResponse.ok) {
-      const data = await maxUsageResponse.json();
-      maxUsage = data[0]?.max_usage ?? null;
-    }
-
-    // Calculate the difference
-    let maxCompactionSavings = null;
-    if (maxUsage !== null && postCompactionUsage !== null) {
-      maxCompactionSavings = maxUsage - postCompactionUsage;
-    }
-    stats.maxCompactionSavings = maxCompactionSavings;
 
     return NextResponse.json({
       success: true,
