@@ -12,7 +12,7 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { influxEndpoint, activeBucket, isLoading } = useConfig();
+  const { influxEndpoint, activeBucket, isLoading, gamificationEnabled } = useConfig();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -97,14 +97,14 @@ export default function AppLayout({
               Cockpit
             </span>
           )}
-          {activeBucket ? (
+          {gamificationEnabled && activeBucket ? (
             <Link
               href="/sessions"
               className={`${styles.tabButton} ${isActive('sessions') ? styles.active : ''}`}
             >
               Sessions
             </Link>
-          ) : (
+          ) : gamificationEnabled && (
             <span
               className={`${styles.tabButton} ${styles.disabled}`}
               title="No active bucket available. Please select a bucket with data first."

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useConfig } from '@/contexts/ConfigContext';
 import styles from './PilotName.module.css';
 
 interface PilotNameProps {
@@ -8,12 +9,14 @@ interface PilotNameProps {
 }
 
 const PilotName: React.FC<PilotNameProps> = ({ initialName = '', onSubmit, className }) => {
+  const [enabled, setEnabled] = useState(false);
   const [name, setName] = useState(initialName);
   const [inputValue, setInputValue] = useState(initialName);
 
   const [pilotNameFading, setPilotNameFading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    if(!enabled) return;
     e.preventDefault();
     setName(inputValue);
     if (onSubmit) onSubmit(inputValue);
@@ -50,9 +53,11 @@ const PilotName: React.FC<PilotNameProps> = ({ initialName = '', onSubmit, class
   const [showModal, setShowModal] = useState(false);
   const [userDismissed, setUserDismissed] = useState(false);
   const [lastFlying, setLastFlying] = useState(true); // Assume flying at start to avoid showing modal on load
+  const { gamificationEnabled } = useConfig();
 
   // Poll flying status and control modal logic
   useEffect(() => {
+    if(!gamificationEnabled) return;
     const interval = setInterval(() => {
       fetch('/api/influxdb/flying')
         .then(response => response.json())
@@ -72,7 +77,7 @@ const PilotName: React.FC<PilotNameProps> = ({ initialName = '', onSubmit, class
         .catch(error => console.error('Error fetching flight data:', error));
     }, 5000);
     return () => clearInterval(interval);
-  }, [userDismissed, lastFlying]);
+  }, [userDismissed, lastFlying, gamificationEnabled]);
 
   // Helper to close modal after submit or close
   const closeModal = () => {
@@ -82,11 +87,13 @@ const PilotName: React.FC<PilotNameProps> = ({ initialName = '', onSubmit, class
 
   // Notify parent to update sessions (if callback provided)
   const notifySessionsUpdate = () => {
+    if(!gamificationEnabled) return;
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('sessionsUpdate'));
     }
   };
 
+  if(!gamificationEnabled) return null;
 
   return (
     <>

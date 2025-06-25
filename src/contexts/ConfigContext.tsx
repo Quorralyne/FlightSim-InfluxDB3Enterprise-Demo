@@ -8,6 +8,7 @@ interface ConfigContextType {
   isConfigured: boolean;
   currentBucket: string | null;
   activeBucket: string | null;
+  gamificationEnabled: boolean;
   saveConfiguration: (url: string, token: string) => Promise<void>;
   createBucket: (name: string, retentionPeriod?: number) => Promise<any>;
   createToken: (bucketName: string, tokenName: string, description?: string) => Promise<any>;
@@ -29,6 +30,7 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [currentBucket, setCurrentBucket] = useState<string | null>(null);
   const [activeBucket, setActiveBucketState] = useState<string | null>(null);
+  const [gamificationEnabled, setGamificationEnabled] = useState(false);
   
   // Function to set active bucket and save it to config
   const setActiveBucket = async (bucketName: string | null) => {
@@ -94,6 +96,10 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
         if (config.adminToken) {
           setAdminToken(config.adminToken);
         }
+
+        if (config.gamificationEnabled) {
+          setGamificationEnabled(config.gamificationEnabled);
+        }
         
         // Set current bucket if available
         if (config.buckets && Object.keys(config.buckets).length > 0) {
@@ -118,7 +124,6 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
             setActiveBucket(null);
           }
           
-          // If activeBucket was previously set in config, use that
           // If activeBucket was previously set in config, use that
           if (config.activeBucket) {
             setActiveBucketState(config.activeBucket);
@@ -332,6 +337,7 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
     isConfigured,
     currentBucket,
     activeBucket,
+    gamificationEnabled,
     saveConfiguration,
     createBucket,
     createToken,
