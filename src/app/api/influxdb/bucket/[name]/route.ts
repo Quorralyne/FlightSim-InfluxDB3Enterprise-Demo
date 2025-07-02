@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readConfig, writeConfig, getFormattedEndpoint, hasValidCredentials } from '@/lib/config';
+import { readConfig, writeConfig, getFormattedEndpoint } from '@/lib/config';
 import { spawn } from 'child_process';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { name: string } }
+  { params }: { params: Promise<{ name: string }> }
 ) {
 
   const tableName = "flight_data";
-  let bucketInfo = {
+  const bucketInfo = {
     status: "offline",
     hasTable: false,
     hasLvc: false,
     lvcCreated: false
   };
 
-  const { name: bucketName } = await params; try {
+  const { name: bucketName } = await params;
+
+  try {
     // Get configuration
     const config = await readConfig();
 
@@ -89,22 +91,8 @@ export async function GET(
             console.log(`Creating LVC for bucket ${bucketName} with command:\n\ninfluxdb3 ${args.join(' ')}\n\n`);
             const cliProcess = spawn(cliPath, args);
 
-            // Collect output
-            let stdoutData = '';
-            let stderrData = '';
-
-            // Collect stdout data
-            cliProcess.stdout.on('data', (data: Buffer) => {
-              stdoutData += data.toString();
-            });
-
-            // Collect stderr data
-            cliProcess.stderr.on('data', (data: Buffer) => {
-              stderrData += data.toString();
-            });
-
             // Wait for the process to exit
-            await new Promise<void>((resolve, reject) => {
+            await new Promise<void>((resolve) => {
               cliProcess.on('close', (code: number) => {
                 if (code !== 0) {
                   resolve();
@@ -114,7 +102,7 @@ export async function GET(
                 }
               });
 
-              cliProcess.on('error', (error: Error) => {
+              cliProcess.on('error', () => {
                 resolve();
               });
             });
@@ -144,14 +132,14 @@ export async function GET(
               await writeConfig(config);
               bucketInfo.hasLvc = true;
             }
-          } catch (lvcError) {
+          } catch {
           }
         }
       }
     }
 
     return NextResponse.json(bucketInfo);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ status: "offline" });
   }
 }

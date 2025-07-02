@@ -18,7 +18,7 @@ export async function GET() {
 
     // Get the properly formatted endpoint URL
     const endpointUrl = getFormattedEndpoint(config);
-    
+
     if (!endpointUrl) {
       return NextResponse.json(
         { success: false, error: 'InfluxDB endpoint is not configured' },
@@ -47,9 +47,11 @@ export async function GET() {
     }
 
     const data = await response.json();
-    
+
     // Extract database names from the response
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const databases = data.map((db: any) => db['iox::database']);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const databaseLinks = databases.map((db: any) => {
       return {
         name: db,

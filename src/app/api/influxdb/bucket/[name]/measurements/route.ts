@@ -4,7 +4,7 @@ import { readConfig, getFormattedEndpoint } from '@/lib/config';
 // GET handler to retrieve recent measurements
 export async function GET(
   request: NextRequest,
-  context: { params: { name: string } }
+  context: { params: Promise<{ name: string }> }
 ) {
   const { name: bucketName } = await context.params;
   const searchParams = request.nextUrl.searchParams;

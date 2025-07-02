@@ -10,9 +10,13 @@ interface ConfigContextType {
   activeBucket: string | null;
   gamificationEnabled: boolean;
   saveConfiguration: (url: string, token: string) => Promise<void>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createBucket: (name: string, retentionPeriod?: number) => Promise<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createToken: (bucketName: string, tokenName: string, description?: string) => Promise<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getBuckets: () => Promise<any[]>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getTokens: () => Promise<any[]>;
   setActiveBucket: (bucketName: string | null) => void;
   isLoading: boolean;

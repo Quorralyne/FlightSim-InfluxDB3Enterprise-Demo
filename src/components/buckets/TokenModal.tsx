@@ -19,6 +19,7 @@ export default function TokenModal({ isOpen, onClose, bucketName }: TokenModalPr
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [existingTokens, setExistingTokens] = useState<any[]>([]);
   const [isLoadingTokens, setIsLoadingTokens] = useState<boolean>(false);
 
@@ -28,6 +29,7 @@ export default function TokenModal({ isOpen, onClose, bucketName }: TokenModalPr
       fetchToken();
       fetchExistingTokens();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, bucketName]);
 
   const fetchToken = async () => {

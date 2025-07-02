@@ -6,7 +6,7 @@ This guide demonstrates how to use [MSFS2Influx](https://github.com/bendechrai/M
 
 The demo setup consists of:
 
-1. **InfluxDB v3**: Time series database for flight data
+1. **InfluxDB 3 Enterprise (v3.2)**: Time series database for flight data
 2. **Node.js**: Run-time environment for this demo
 3. **This demo**
 4. **MSFS2Influx** or **MSFS2MQTT**: Get data from FlightSim to InfluxDB
@@ -47,66 +47,39 @@ flowchart LR
 
 This demo requires a self-hosted InfluxDB v3 Enterprise instance.
 
-### Setup
+1. Download [InfluxDB v3 Enterprise v3.2 for Windows AMD64 x86_64](https://dl.influxdata.com/influxdb/releases/influxdb3-enterprise-3.2.0-windows_amd64.zip)
 
-1. Download [InfluxDB v3 Enterprise](https://docs.influxdata.com/influxdb3/enterprise/)
+   > 🍏 🐧 This repo assumes the demo is running on a Windows mcahine, but if you want to get it working on another platform, you can download v3.2 for [macOS Silicon ARM64](https://dl.influxdata.com/influxdb/releases/influxdb3-enterprise-3.2.0_darwin_arm64.tar.gz), [Linux AMD64 x86_64](https://dl.influxdata.com/influxdb/releases/influxdb3-enterprise-3.2.0_linux_amd64.tar.gz), and [Linux ARM64 AArch64](https://dl.influxdata.com/influxdb/releases/influxdb3-enterprise-3.2.0_linux_amd64.tar.gz)). Other versions of InfluxDB 3 Enterprise might also work but haven't been tested.
 
 2. Extract the ZIP file to `C:\Program Files\InfluxData\influxdb`
 
-3. Start InfluxDB in a PowerShell window:
+3. Start InfluxDB by running [`./scripts/1-start-influxdb.bat`].(/scripts/1-start-influxdb.bat) in this repo.
 
-   ```powershell
-   & 'C:\Program Files\InfluxData\influxdb\influxdb3.exe' serve `
-     --node-id demonode `
-     --object-store file `
-     --data-dir $([Environment]::GetFolderPath("UserProfile") + "\influxdb_data\") `
-     --cluster-id cluster `
-     --compaction-max-num-files-per-plan 100 `
-     --compaction-gen2-duration 5m
-   ```
+   > ℹ️ The first time you run this, you'll be asked to select a license type. Choose (1) FREE TRIAL, enter your email address, and wait for the verification email. After verifying, the command line process will complete, and InfluxDB3 will attempt to run. You might need to allow firewall access. If you might want to run the MSFS Bridge on a separate machine, tick the "Private networks, such as my home or work network" too. 
 
-    Or run it in a docker container:
+## Setting up this demo
 
-    ```powershell
-    docker run -it -p 8181:8181 -v 'C:\path\to\influxdb_data:/influxdb_data' `
-      influxdb:3-enterprise serve ` 
-      --node-id demonode ` 
-      --object-store file ` 
-      --data-dir /influxdb_data ` 
-      --cluster-id cluster ` 
-      --compaction-max-num-files-per-plan 100 `
-      --compaction-gen2-duration 5m
-    ```
+1. [Install Node.js](https://nodejs.org/en/download/)
 
-   > ℹ️ The first time you run this, you'll be asked to select a license type. Choose (1) FREE TRIAL, enter your email address, and wait for the verification email. After verifying, the command line process will complete, and InfluxDB3 will attempt to run. You might need to allow firewall access. I ticked the "Private networks, such as my home or work network" too, just in case.
+2. Run [`./install.ps1`](./install.ps1) while InfluxDB is running. This will:
+    - generate an admin token
+    - create a `flightsim` bucket
+    - create a bucket token with read and write privileges
+    - create the `config.json` in the repo root
 
-4. In another PowerShell window, run:
+3. Run [`./scripts/2-start-demo.bat`](./scripts/2-start-demo.bat) to start the demo.
 
-   ```powershell
-   & 'C:\Program Files\InfluxData\influxdb\influxdb3.exe' create token --admin
-   ```
+   > ℹ️ The demo is running when you see the following message:
+   >  ```
+   >  ✓ Starting...
+   >  ✓ Ready in 2.2s (or some other number)
+   >  ```
 
-   to generate an admin token. **Store this in a safe space.**
+4. Open http://localhost:3000 in your browser
 
-5. [Install Node.js](https://nodejs.org/en/download/)
+5. You'll then see a list of the buckets in your InfluxDB instance. Create a new bucket named "flightsim".
 
-6. Start this visualisation app from the root of the repo:
-
-   ```powershell
-   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-   npm install
-   npm run dev
-   ```
-
-7. Open http://localhost:3000 in your browser
-
-8. Follow the setup wizard to connect to your InfluxDB instance. You'll need the Admin Token generated in step 4.
-
-9. You'll then see a list of the buckets in your InfluxDB instance. Create a new bucket named "flightsim".
-
-10. Click on the `</>` icon to see the API token for the bucket, then "Generate Token".
-
-    > ℹ️ Note that you can always come back and find this token here - this isn't a one-time operation.
+6. Click on the `</>` icon to see the API token for the bucket.
 
 ## Database Size
 

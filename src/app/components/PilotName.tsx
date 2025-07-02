@@ -9,22 +9,20 @@ interface PilotNameProps {
 }
 
 const PilotName: React.FC<PilotNameProps> = ({ initialName = '', onSubmit, className }) => {
-  const [enabled, setEnabled] = useState(false);
+  const { gamificationEnabled } = useConfig();
   const [name, setName] = useState(initialName);
-  const [inputValue, setInputValue] = useState(initialName);
 
   const [pilotNameFading, setPilotNameFading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    if(!enabled) return;
+    if(!gamificationEnabled) return;
     e.preventDefault();
-    setName(inputValue);
-    if (onSubmit) onSubmit(inputValue);
+    if (onSubmit) onSubmit(name);
     try {
       const resp = await fetch('/api/influxdb/flightsession', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pilotName: inputValue })
+        body: JSON.stringify({ pilotName: name })
       });
       const data = await resp.json();
       if (data.success) {
@@ -34,7 +32,7 @@ const PilotName: React.FC<PilotNameProps> = ({ initialName = '', onSubmit, class
           setPilotNameFading(true);
           setTimeout(() => {
             setPilotNameFading(false);
-            setInputValue('');
+            setName('');
           }, 200);
         }
         closeModal(); // Always close modal after submit
@@ -53,7 +51,6 @@ const PilotName: React.FC<PilotNameProps> = ({ initialName = '', onSubmit, class
   const [showModal, setShowModal] = useState(false);
   const [userDismissed, setUserDismissed] = useState(false);
   const [lastFlying, setLastFlying] = useState(true); // Assume flying at start to avoid showing modal on load
-  const { gamificationEnabled } = useConfig();
 
   // Poll flying status and control modal logic
   useEffect(() => {
@@ -106,8 +103,8 @@ const PilotName: React.FC<PilotNameProps> = ({ initialName = '', onSubmit, class
       >
         <input
           type="text"
-          value={inputValue}
-          onChange={e => setInputValue(e.target.value)}
+          value={name}
+          onChange={e => setName(e.target.value)}
           placeholder="Enter pilot name"
           className={styles.pilotInput}
         />
@@ -119,12 +116,12 @@ const PilotName: React.FC<PilotNameProps> = ({ initialName = '', onSubmit, class
         <div className={styles.modal} style={{ display: 'flex' }}>
           <div className={styles.modalContent}>
             <span className={styles.close} onClick={closeModal}>&times;</span>
-            <p>Flight is paused. Please enter next pilot's name and submit after flight starts.</p>
+            <p>Flight is paused. Please enter next pilot&apos;s name and submit after flight starts.</p>
             <form onSubmit={handleSubmit}>
               <input
                 type="text"
-                value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
+                value={name}
+                onChange={e => setName(e.target.value)}
                 placeholder="Enter pilot name"
                 className={styles.pilotInput}
               />

@@ -5,7 +5,8 @@ import { NextResponse } from 'next/server';
 
 // Create a global variable to track if monitoring is active
 // This uses the Node.js global object which persists across module reloads
-let globalMonitorState = (global as any).dirSizeMonitorState || {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const globalMonitorState = (global as any).dirSizeMonitorState || {
     isActive: false,
     intervalId: null,
     instanceId: Date.now(), // Unique ID for this instance
@@ -13,6 +14,7 @@ let globalMonitorState = (global as any).dirSizeMonitorState || {
 };
 
 // Store it back in the global object
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (global as any).dirSizeMonitorState = globalMonitorState;
 
 // Clear any existing interval when the module is loaded
@@ -49,6 +51,7 @@ function calculateDirSize(dirPath: string): number {
 }
 
 // Function to write data to InfluxDB
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function writeToInfluxDB(data: string, config: any) {
     try {
         const url = new URL(`${config.influxEndpoint}api/v3/write_lp`);
@@ -99,7 +102,7 @@ async function collectAndSendData() {
             return;
         }
 
-        let dbDirectory = config.dataPath;
+        const dbDirectory = config.dataPath;
 
         if (!fs.existsSync(dbDirectory)) {
             console.error('[DirSizeMonitor] Could not find DB directory');

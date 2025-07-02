@@ -5,7 +5,7 @@ import L from 'leaflet';
 import styles from './cockpit.module.css';
 
 // Fix for default marker icons in Next.js
-// @ts-ignore
+// @ts-expect-error Leaflet types are not compatible with Next.js
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -45,18 +45,6 @@ export default function MapView({ latitude, longitude, heading }: MapViewProps) 
       wheelPxPerZoomLevel: 60, // Slower zoom with mouse wheel
       scrollWheelZoom: 'center', // Zoom to mouse position
     });
-
-    // Add tile layer with optimization options
-    const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      minZoom: 2,
-      detectRetina: false, // Disable retina detection to prevent blurry tiles
-      tileSize: 256,
-      zoomOffset: 0,
-      noWrap: true, // Prevent wrapping around the world
-      bounds: [[-85.0511, -180], [85.0511, 180]], // Prevent loading tiles outside valid range
-      // Remove unsupported options that were causing TypeScript errors
-    }).addTo(mapRef.current);
     
     // Add a small delay to ensure the map container is properly sized
     setTimeout(() => {
@@ -115,7 +103,7 @@ export default function MapView({ latitude, longitude, heading }: MapViewProps) 
         markerRef.current = null;
       }
     };
-  }, []);
+  });
 
   // Update marker position and map view when position changes
   useEffect(() => {

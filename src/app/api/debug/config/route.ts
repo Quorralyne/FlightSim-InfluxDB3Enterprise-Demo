@@ -10,7 +10,7 @@ async function readConfig() {
   try {
     const data = await fs.readFile(configFilePath, 'utf8');
     return JSON.parse(data);
-  } catch (error) {
+  } catch {
     // If file doesn't exist or has invalid JSON, return empty config
     return {};
   }

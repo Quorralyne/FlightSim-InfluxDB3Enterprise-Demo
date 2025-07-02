@@ -34,25 +34,25 @@ export async function POST(request: NextRequest) {
         '--token', config.adminToken,
         '--expiry', '7y'
       ];
-      
+
       // Use spawn to handle the CLI process
-      console.log(`Creating token for bucket ${bucketName} with command:\n\ninfluxdb3 ${args.join(' ')}\n\n`);    
+      console.log(`Creating token for bucket ${bucketName} with command:\n\ninfluxdb3 ${args.join(' ')}\n\n`);
       const cliProcess = spawn(cliPath, args);
-      
+
       // Collect output
       let stdoutData = '';
       let stderrData = '';
-      
+
       // Collect stdout data
       cliProcess.stdout.on('data', (data: Buffer) => {
         stdoutData += data.toString();
       });
-      
+
       // Collect stderr data
       cliProcess.stderr.on('data', (data: Buffer) => {
         stderrData += data.toString();
       });
-      
+
       // Wait for the process to exit
       await new Promise<void>((resolve, reject) => {
         cliProcess.on('close', (code: number) => {
@@ -62,26 +62,26 @@ export async function POST(request: NextRequest) {
             resolve();
           }
         });
-        
+
         cliProcess.on('error', (error: Error) => {
           reject(error);
         });
       });
-      
+
       // Log the full output for debugging
       console.log('CLI command output:', { stdout: stdoutData, stderr: stderrData });
-      
+
       // Try to extract the token from the output
       // First try to match the full token line with ANSI codes
-      const tokenMatch = stdoutData.match(/\x1B\[1mToken:\x1B\[0m\s+([^\s]+)/) || 
-                        // Fallback to matching any token-like string that's at least 20 chars long
-                        stdoutData.match(/([a-zA-Z0-9_\-]{20,})/);
-      
+      const tokenMatch = stdoutData.match(/\x1B\[1mToken:\x1B\[0m\s+([^\s]+)/) ||
+        // Fallback to matching any token-like string that's at least 20 chars long
+        stdoutData.match(/([a-zA-Z0-9_\-]{20,})/);
+
       if (!tokenMatch || !tokenMatch[1]) {
         console.error('Failed to parse token from CLI output. Full output:', stdoutData);
         throw new Error('Failed to parse token from CLI output');
       }
-      
+
       // Clean up the token in case there are any ANSI escape codes or extra characters
       const token = tokenMatch[1].trim().replace(/[\x00-\x1F\x7F-\x9F]/g, '');
       const tokenId = `cli-${Date.now()}`;
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       if (!config.buckets) {
         config.buckets = {};
       }
-      
+
       // If the bucket doesn't exist, create it
       if (!config.buckets[bucketName]) {
         config.buckets[bucketName] = {
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
           retentionPeriod: 'infinite'
         };
       }
-      
+
       // Add the token to the bucket
       config.buckets[bucketName].token = token;
       config.buckets[bucketName].tokenId = tokenId;
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
           created_at: new Date().toISOString(),
           expiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
         };
-        
+
         return NextResponse.json({
           success: true,
           token: config.buckets[bucketName].token,
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
       // If not in config, try to get from InfluxDB
       // Get the properly formatted endpoint URL
       const endpointUrl = getFormattedEndpoint(config);
-      
+
       if (!endpointUrl) {
         return NextResponse.json(
           { success: false, error: 'InfluxDB endpoint is not configured' },
@@ -211,6 +211,7 @@ export async function GET(request: NextRequest) {
       const data = await response.json();
 
       // Find the tokens where `name` === "Token for bucket-name" 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tokens = data.filter((token: any) => {
         return token.name === `Token for ${bucketName}`;
       });
@@ -218,6 +219,7 @@ export async function GET(request: NextRequest) {
       // Process tokens from the query results
 
       // Make sure we're returning properly formatted tokens
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const formattedTokens = tokens.map((token: any) => ({
         id: token.id || '',
         name: token.name || `Token for ${bucketName}`,
@@ -225,7 +227,7 @@ export async function GET(request: NextRequest) {
         created_at: token.created_at || new Date().toISOString(),
         expiry: token.expiry || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       }));
-      
+
       return NextResponse.json({
         success: true,
         tokens: formattedTokens,
@@ -236,7 +238,7 @@ export async function GET(request: NextRequest) {
     // If no bucket name provided, list all tokens
     // Get the properly formatted endpoint URL
     const endpointUrl = getFormattedEndpoint(config);
-    
+
     if (!endpointUrl) {
       return NextResponse.json(
         { success: false, error: 'InfluxDB endpoint is not configured' },
@@ -267,6 +269,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
 
     // Make sure we're returning properly formatted tokens
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formattedTokens = (data.tokens || []).map((token: any) => ({
       id: token.id || '',
       name: token.name || 'Unnamed Token',
@@ -274,7 +277,7 @@ export async function GET(request: NextRequest) {
       created_at: token.created_at || new Date().toISOString(),
       expiry: token.expiry || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
     }));
-    
+
     return NextResponse.json({
       success: true,
       tokens: formattedTokens,
@@ -301,20 +304,20 @@ export async function DELETE(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const tokenName = searchParams.get('tokenName');
     const bucketName = searchParams.get('bucket');
-    
+
     // Read the current configuration to get the endpoint and admin token
     const config = await readConfig();
-    
+
     if (!config.influxEndpoint || !config.adminToken) {
       return NextResponse.json(
         { success: false, error: 'InfluxDB configuration is incomplete. Please configure the endpoint and admin token first.' },
         { status: 400 }
       );
     }
-    
+
     // Get the properly formatted endpoint URL
     const endpointUrl = getFormattedEndpoint(config);
-    
+
     if (!endpointUrl) {
       return NextResponse.json(
         { success: false, error: 'InfluxDB endpoint is not configured' },
@@ -328,38 +331,36 @@ export async function DELETE(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     // We must use the CLI to delete the token since there is no REST API for token deletion
     try {
       // Using the Windows path to the InfluxDB CLI executable
       const cliPath = 'C:\\Program Files\\InfluxData\\influxdb\\influxdb3.exe';
-      
+
       // Delete token with the specified name
-      
+
       // Use spawn to create a process that we can interact with
       const cliProcess = spawn(cliPath, [
         'delete', 'token',
         '--token-name', tokenName,
         '--token', config.adminToken
       ]);
-      
+
       // Collect stdout data
-      let stdoutData = '';
       cliProcess.stdout.on('data', (data: Buffer) => {
-        stdoutData += data.toString();
         // If the CLI is asking for confirmation, automatically send 'yes'
         if (data.toString().includes("Enter 'yes' to confirm")) {
           cliProcess.stdin.write('yes\n');
         }
       });
-      
+
       // Collect stderr data
       let stderrData = '';
       cliProcess.stderr.on('data', (data: Buffer) => {
         stderrData += data.toString();
         // Collect error output
       });
-      
+
       // Return a promise that resolves when the process exits
       await new Promise((resolve, reject) => {
         cliProcess.on('close', (code: number | null) => {
@@ -370,13 +371,13 @@ export async function DELETE(request: NextRequest) {
             reject(new Error(`CLI process exited with code ${code}: ${stderrData}`));
           }
         });
-        
+
         cliProcess.on('error', (err: Error) => {
           console.error('CLI process error:', err);
           reject(err);
         });
       });
-      
+
       // Token deletion completed successfully
     } catch (error) {
       console.error('Error executing CLI command:', error);
@@ -385,10 +386,10 @@ export async function DELETE(request: NextRequest) {
         error: `Failed to delete token: ${error instanceof Error ? error.message : 'Unknown error'}`
       }, { status: 500 });
     }
-    
+
     // If we got here, the token deletion was successful
     // Now update our local config
-    
+
     // If a bucket name was provided, also remove the token from the config
     if (bucketName && config.buckets && config.buckets[bucketName]) {
       if (config.buckets[bucketName].token) {
@@ -400,7 +401,7 @@ export async function DELETE(request: NextRequest) {
         await writeConfig(config);
       }
     }
-    
+
     // Clean up any old tokens structure if it exists
     if (bucketName && config.tokens && config.tokens[bucketName]) {
       delete config.tokens[bucketName];

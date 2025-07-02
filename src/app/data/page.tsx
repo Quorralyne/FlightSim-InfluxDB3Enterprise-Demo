@@ -3,9 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useConfig } from '@/contexts/ConfigContext';
 import AppLayout from '../app-layout';
-import Button from '@/components/ui/Button';
 import Notice from '@/components/ui/Notice';
-import { RefreshIcon } from '@/components/ui/icons/Icons';
 import styles from './data.module.css';
 import PilotName from '../components/PilotName';
 
@@ -20,6 +18,7 @@ interface FlightDataPoint {
   time: string;
   topic: string;
   host: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 
@@ -167,7 +166,7 @@ export default function DataPage() {
       const steps = [1, 2, 5, 10];
       const magnitude = Math.pow(10, Math.floor(Math.log10(range)));
       let step = magnitude;
-      for (let s of steps) {
+      for (const s of steps) {
         if (range / (s * magnitude) <= 5) {
           step = s * magnitude;
           break;
@@ -296,6 +295,7 @@ export default function DataPage() {
     if (stats) {
       drawDbSizeGraph();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stats]);
 
   // Fetch data on mount and when activeBucket changes
@@ -313,6 +313,7 @@ export default function DataPage() {
         clearInterval(interval);
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBucket]);
 
   // Format timestamp for display in UTC Zulu time with milliseconds

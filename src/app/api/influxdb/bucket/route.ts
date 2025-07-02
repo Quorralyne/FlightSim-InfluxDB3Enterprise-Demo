@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Get the properly formatted endpoint URL
     const endpointUrl = getFormattedEndpoint(config);
-    
+
     if (!endpointUrl) {
       return NextResponse.json(
         { success: false, error: 'InfluxDB endpoint is not configured' },
@@ -96,19 +96,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Try to parse the response as JSON, but handle the case where it's not valid JSON
-    let bucketData = {};
-    try {
-      const text = await response.text();
-
-      // Only try to parse as JSON if there's actual content
-      if (text && text.trim()) {
-        bucketData = JSON.parse(text);
-      } else {
-      }
-    } catch (err) {
-    }
-
     // Update the configuration with the bucket information
     if (!config.buckets) {
       config.buckets = {};
@@ -155,7 +142,7 @@ export async function GET() {
 
     // Get the properly formatted endpoint URL
     const endpointUrl = getFormattedEndpoint(config);
-    
+
     if (!endpointUrl) {
       return NextResponse.json(
         { success: false, error: 'InfluxDB endpoint is not configured' },
@@ -184,6 +171,7 @@ export async function GET() {
     }
 
     const data = await response.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const buckets = data.map((bucket: any) => bucket['iox::database']);
 
     return NextResponse.json({
@@ -208,7 +196,7 @@ export async function DELETE(request: NextRequest) {
     // Get the bucket name from the query parameters
     const searchParams = request.nextUrl.searchParams;
     const bucketName = searchParams.get('name');
-    
+
     if (!bucketName) {
       return NextResponse.json(
         { success: false, error: 'Bucket name is required' },
@@ -218,7 +206,7 @@ export async function DELETE(request: NextRequest) {
 
     // Read the current configuration to get the endpoint and admin token
     const config = await readConfig();
-    
+
     if (!config.influxEndpoint || !config.adminToken) {
       return NextResponse.json(
         { success: false, error: 'InfluxDB configuration is incomplete. Please configure the endpoint and admin token first.' },
@@ -228,7 +216,7 @@ export async function DELETE(request: NextRequest) {
 
     // Get the properly formatted endpoint URL
     const endpointUrl = getFormattedEndpoint(config);
-    
+
     if (!endpointUrl) {
       return NextResponse.json(
         { success: false, error: 'InfluxDB endpoint is not configured' },
@@ -241,7 +229,7 @@ export async function DELETE(request: NextRequest) {
       delete config.buckets[bucketName];
       await writeConfig(config);
     }
-    
+
     // Then attempt to delete from InfluxDB
     // Use the correct endpoint format for InfluxDB v3 database deletion
     const response = await fetch(`${endpointUrl}api/v3/configure/database?db=${encodeURIComponent(bucketName)}`, {
@@ -251,7 +239,7 @@ export async function DELETE(request: NextRequest) {
         'Accept': 'application/json'
       }
     });
-    
+
     // Handle response
     if (!response.ok) {
       // Try to get error details from response
@@ -265,20 +253,20 @@ export async function DELETE(request: NextRequest) {
             if (parsedError.error) {
               errorMessage = parsedError.error;
             }
-          } catch (e) {
+          } catch {
             // If we can't parse the error as JSON, use the raw text
             if (errorData.length < 100) { // Only use the text if it's reasonably short
               errorMessage = errorData;
             }
           }
         }
-      } catch (e) {
+      } catch {
         // Ignore error parsing errors
       }
 
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: errorMessage,
           status: response.status
         },
@@ -291,16 +279,16 @@ export async function DELETE(request: NextRequest) {
       delete config.buckets[bucketName];
       await writeConfig(config);
     }
-    
-    return NextResponse.json({ 
-      success: true, 
+
+    return NextResponse.json({
+      success: true,
       message: `Bucket '${bucketName}' deleted successfully`
     });
   } catch (error) {
     console.error('Error deleting bucket:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error instanceof Error ? error.message : 'Failed to delete bucket',
       },
       { status: 500 }

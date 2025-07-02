@@ -7,11 +7,12 @@ import { readConfig, getFormattedEndpoint } from '@/lib/config';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { dbname: string; tablename: string } }
+  { params }: { params: Promise<{ dbname: string; tablename: string }> }
 ) {
   try {
     // Extract the database name and table name from the URL parameters
-    const {dbname, tablename} = await params;
+    const paramsObj = await params;
+    const {dbname, tablename} = paramsObj;
     
     if (!dbname || !tablename) {
       return NextResponse.json(
@@ -77,8 +78,9 @@ export async function GET(
     });
   } catch (error) {
     // Use the local variables instead of accessing params directly
-    const db = await params.dbname;
-    const table = await params.tablename;
+    const paramsObj = await params;
+    const db = paramsObj.dbname;
+    const table = paramsObj.tablename;
     console.error(`Error querying table data for ${db}/${table}:`, error);
     return NextResponse.json(
       {

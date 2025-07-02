@@ -18,6 +18,7 @@ interface FlightDataRecord {
   time: string;
   topic: string;
   host: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 
@@ -288,7 +289,7 @@ export default function CockpitPage() {
                 <h3 className={styles.cardTitle}>Flight Position</h3>
               </div>
               <div className={styles.cardContent}>
-                <MapView 
+                <MapView
                   latitude={getMetricValue('flight_latitude', null)}
                   longitude={getMetricValue('flight_longitude', null)}
                   heading={getMetricValue('flight_heading_magnetic', null)}

@@ -35,7 +35,7 @@ export async function GET() {
         try {
             data = JSON.parse(text);
             isJson = true;
-        } catch (err) {
+        } catch {
             data = text;
         }
         if (!resp.ok) {
@@ -44,6 +44,7 @@ export async function GET() {
         }
         // Return sessions as array
         return NextResponse.json({ success: true, sessions: isJson ? data : [] });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         return NextResponse.json({ success: false, error: err.message }, { status: 500 });
     }
@@ -107,12 +108,14 @@ export async function POST(req: NextRequest) {
             if (!influxResp.ok) {
                 return NextResponse.json({ success: false, error: influxText }, { status: 500 });
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             console.error('[Pilot API] Fetch error:', err);
             return NextResponse.json({ success: false, error: err.message }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         return NextResponse.json({ success: false, error: err.message }, { status: 500 });
     }

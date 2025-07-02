@@ -1,10 +1,9 @@
 "use client";
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useConfig } from '@/contexts/ConfigContext';
 import { InfluxDBIcon } from '@/components/ui/icons';
-import { useEffect } from 'react';
 import styles from './layout.module.css';
 
 export default function AppLayout({
@@ -12,17 +11,8 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { influxEndpoint, activeBucket, isLoading, gamificationEnabled } = useConfig();
+  const { activeBucket, isLoading, gamificationEnabled } = useConfig();
   const pathname = usePathname();
-  const router = useRouter();
-
-  // Use useEffect for redirection to ensure it only happens client-side
-  useEffect(() => {
-    // Only redirect if we're sure configuration is loaded and there's no endpoint
-    if (!isLoading && !influxEndpoint) {
-      router.push('/');
-    }
-  }, [influxEndpoint, router, isLoading]);
   
   // If still loading or not configured, show loading indicator
   if (isLoading) {
@@ -40,11 +30,6 @@ export default function AppLayout({
         </div>
       </div>
     );
-  }
-  
-  // If not configured after loading is complete, return null until redirect happens
-  if (!influxEndpoint) {
-    return null;
   }
 
   // Helper to check if a tab is active

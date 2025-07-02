@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readConfig, writeConfig, updateConfig, removeConfigKeys, Config } from '@/lib/config';
+import { readConfig, updateConfig, removeConfigKeys } from '@/lib/config';
 
 // GET handler to retrieve configuration
 export async function GET() {

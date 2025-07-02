@@ -1,9 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { readConfig, writeConfig, getFormattedEndpoint, hasValidCredentials } from '@/lib/config';
+import { NextResponse } from 'next/server';
+import { readConfig, getFormattedEndpoint } from '@/lib/config';
 
-export async function GET(
-  request: NextRequest,
-) {
+export async function GET() {
 
   const tableName = "flight_data";
   try {

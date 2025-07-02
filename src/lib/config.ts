@@ -25,6 +25,7 @@ export interface Config {
       };
     };
   };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any; // Allow for additional properties
 }
 
@@ -36,7 +37,7 @@ export async function readConfig(): Promise<Config> {
   try {
     const data = await fs.readFile(configFilePath, 'utf8');
     return JSON.parse(data);
-  } catch (error) {
+  } catch {
     // If file doesn't exist or has invalid JSON, return empty config
     return {};
   }

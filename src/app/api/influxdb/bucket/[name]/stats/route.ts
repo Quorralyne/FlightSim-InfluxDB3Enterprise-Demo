@@ -4,11 +4,11 @@ import { readConfig, getFormattedEndpoint } from '@/lib/config';
 // GET handler to retrieve bucket statistics
 export async function GET(
   request: NextRequest,
-  context: { params: { name: string } }
+  context: { params: Promise<{ name: string }> }
 ) {
   const { name: bucketName } = await context.params;
 
-  let stats = {
+  const stats = {
     recordCount: 0,
     measurementCountPerRecord: 0,
     dbSizeData: [],
@@ -114,10 +114,12 @@ export async function GET(
       //   timestamp: '2025-05-07T06:03:10.474',
       //   value: 161574683
       // }]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       stats.dbSizeData = data.filter((item: any) => item.folder === 'db_size').map((item: any) => ({
         timestamp: item.time,
         value: item.directory_size_bytes
       }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     }
 

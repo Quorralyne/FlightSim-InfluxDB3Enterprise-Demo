@@ -36,12 +36,13 @@ const SessionsPage = () => {
                             <table className={styles.sessionsTable}>
                                 <thead>
                                     <tr>
-                                        <th>Pilot's Name</th>
+                                        <th>Pilot&apos;s Name</th>
                                         <th className={styles.centre}>Flight Time</th>
                                         <th className={styles.right}>Timestamp</th>
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                     {sessions.filter((session: any) => session.anonymous === false).map((session: any) => (
                                         <tr key={session.time}>
                                             <td>{session.pilot_name}</td>

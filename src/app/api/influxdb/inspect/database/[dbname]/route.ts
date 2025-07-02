@@ -6,11 +6,12 @@ import { readConfig, getFormattedEndpoint } from '@/lib/config';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { dbname: string } }
+  { params }: { params: Promise<{ dbname: string }> }
 ) {
   try {
-    const { dbname } = await params;
-    
+    const paramsObj = await params;
+    const { dbname } = paramsObj;
+
     if (!dbname) {
       return NextResponse.json(
         { success: false, error: 'Database name is required' },
@@ -30,7 +31,7 @@ export async function GET(
 
     // Get the properly formatted endpoint URL
     const endpointUrl = getFormattedEndpoint(config);
-    
+
     if (!endpointUrl) {
       return NextResponse.json(
         { success: false, error: 'InfluxDB endpoint is not configured' },
@@ -65,20 +66,21 @@ export async function GET(
     }
 
     const data = await response.json();
-    
+
     // Extract table names from the response
     // The response format depends on InfluxDB's SQL query result structure
     // We'll handle both empty results and populated results
     let tables = [];
-    
+
     if (Array.isArray(data) && data.length > 0) {
       // If there are tables, they should be in the first result set
       // Each row should have a 'name' field which is the table name
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tables = data.map((row: any) => {
         // Handle different possible response formats
         if (row.name) return row.name;
         if (row.table_name) return row.table_name;
-        
+
         // If the structure is different, try to extract the first string value
         const firstValue = Object.values(row).find(v => typeof v === 'string');
         return firstValue || 'unknown';
@@ -94,7 +96,8 @@ export async function GET(
     });
   } catch (error) {
     // Use the local variable instead of accessing params directly
-    const db = await params.dbname;
+    const paramsObj = await params;
+    const db = paramsObj.dbname;
     console.error(`Error listing tables for database ${db}:`, error);
     return NextResponse.json(
       {
