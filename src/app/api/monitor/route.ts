@@ -127,8 +127,8 @@ async function collectAndSendData() {
     }
 }
 
-// Start the monitoring when in development mode
-if (process.env.NODE_ENV === 'development' && !globalMonitorState.isActive) {
+// Start the monitoring
+if (!globalMonitorState.isActive) {
     console.log(`[DirSizeMonitor] Starting monitoring with instance ID: ${globalMonitorState.instanceId} at ${globalMonitorState.startTime}`);
     // Run once immediately
     collectAndSendData();

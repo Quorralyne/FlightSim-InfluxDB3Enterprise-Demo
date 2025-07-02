@@ -45,20 +45,31 @@ export default function MapView({ latitude, longitude, heading }: MapViewProps) 
       wheelPxPerZoomLevel: 60, // Slower zoom with mouse wheel
       scrollWheelZoom: 'center', // Zoom to mouse position
     });
-    
+
+    // Add tile layer with optimization options
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      minZoom: 2,
+      detectRetina: false, // Disable retina detection to prevent blurry tiles
+      tileSize: 256,
+      zoomOffset: 0,
+      noWrap: true, // Prevent wrapping around the world
+      bounds: [[-85.0511, -180], [85.0511, 180]], // Prevent loading tiles outside valid range
+    }).addTo(mapRef.current);
+
     // Add a small delay to ensure the map container is properly sized
     setTimeout(() => {
       if (mapRef.current) {
         mapRef.current.invalidateSize({ animate: false, pan: false });
       }
     }, 100);
-    
+
     // Force a redraw of the map to fix any tile loading issues
     mapRef.current.invalidateSize({ animate: false, pan: false });
 
     // Add scale control
     L.control.scale({ imperial: true, metric: true }).addTo(mapRef.current);
-    
+
     // Create initial marker (invisible until we have coordinates)
     const icon = L.divIcon({
       html: `
@@ -90,7 +101,7 @@ export default function MapView({ latitude, longitude, heading }: MapViewProps) 
       iconAnchor: [12, 12],
     });
 
-    markerRef.current = L.marker([0, 0], { 
+    markerRef.current = L.marker([0, 0], {
       icon,
       opacity: 0, // Start invisible
       zIndexOffset: 1000,
@@ -103,7 +114,7 @@ export default function MapView({ latitude, longitude, heading }: MapViewProps) 
         markerRef.current = null;
       }
     };
-  });
+  }, []);
 
   // Update marker position and map view when position changes
   useEffect(() => {
@@ -112,11 +123,11 @@ export default function MapView({ latitude, longitude, heading }: MapViewProps) 
 
     // Make marker visible once we have coordinates
     markerRef.current.setOpacity(1);
-    
+
     // Keep marker at the center of the map
     const mapCenter = mapRef.current.getCenter();
     markerRef.current.setLatLng(mapCenter);
-    
+
     // Update marker rotation if heading is available
     if (heading !== null && markerRef.current) {
       const icon = markerRef.current.getIcon() as L.DivIcon;
@@ -129,10 +140,10 @@ export default function MapView({ latitude, longitude, heading }: MapViewProps) 
         markerRef.current.setIcon(icon);
       }
     }
-    
+
     // Calculate the new position
     const newLatLng = L.latLng(latitude, longitude);
-    
+
     // Center the map on the new position
     mapRef.current.setView(newLatLng, mapRef.current.getZoom(), {
       animate: true,
@@ -140,7 +151,7 @@ export default function MapView({ latitude, longitude, heading }: MapViewProps) 
       easeLinearity: 0.25,
       noMoveStart: true
     });
-    
+
     // Store the current position for the next update
     lastPositionRef.current = newLatLng;
   }, [latitude, longitude, heading]);

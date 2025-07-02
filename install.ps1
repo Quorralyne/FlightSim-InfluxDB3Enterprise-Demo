@@ -199,6 +199,12 @@ try {
     $utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText($CONFIG_FILE, $formattedJson, $utf8NoBomEncoding)
     Write-Host " - Done"
+
+    # === BUILD THE DEMO APP ===
+    Write-Host "Building the demo app" -NoNewline
+    npm install
+    npm run build
+    Write-Host " - Done"
     
     Write-Host ""
     Write-Host "Setup completed successfully!"
